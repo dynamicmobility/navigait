@@ -1,0 +1,36 @@
+**************************************************
+Checking cost value of RightSS:
+**************************************************
+        Cost 	        Value
+Cost: torque_RightSS 
+torque_RightSS 	 3.78805173E+00
+Cost: BaseMovement_RightSS 
+BaseMovement_RightSS 	 9.69897184E+00
+Cost: COMMovement_RightSS 
+COMMovement_RightSS 	 6.28156947E-02
+Cost: BaseOrientation_RightSS 
+BaseOrientation_RightSS 	 3.00744908E-04
+**************************************************
+**************************************************
+Checking cost value of LeftImpact:
+**************************************************
+        Cost 	        Value
+**************************************************
+**************************************************
+Checking cost value of LeftSS:
+**************************************************
+        Cost 	        Value
+Cost: torque_LeftSS 
+torque_LeftSS 	 3.70835645E+00
+Cost: BaseMovement_LeftSS 
+BaseMovement_LeftSS 	 1.16099557E+01
+Cost: COMMovement_LeftSS 
+COMMovement_LeftSS 	 7.38061301E-02
+Cost: BaseOrientation_LeftSS 
+BaseOrientation_LeftSS 	 2.30325238E-04
+**************************************************
+**************************************************
+Checking cost value of RightImpact:
+**************************************************
+        Cost 	        Value
+**************************************************

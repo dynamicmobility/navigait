@@ -1,0 +1,133 @@
+name: parallel4096
+save_dir: icra2026-final/navigait/learning
+description: "change push mag next"
+algorithm: "ppo"
+env: "NaviGait"
+robot: "BRUCE"
+backend: "np"
+gaitlib_path: envs/bruce/gaits/BRUCE_GL_4bar_noarms_v1
+env_config:
+  ctrl_dt:        0.02
+  sim_dt:         0.004
+  jt_scale:       0.20
+  vel_scale:      0.20
+  history_length: 5
+  noise_scale:    1.0
+  terrain:        "flat"
+  filter_tau:     0.03
+  tracking:       position
+  ankle_offsets:  [-0.0, -0.0]
+  start_stance:   either
+  initialization:
+    strategy: "random-with-zero"
+    vdes: [0.0, 0.0, 0.0]
+    add_random_yaw: false
+    add_random_jt:
+      enabled: false
+      minval: -0.08
+      maxval: 0.08
+    random_jt_calibration:
+      enabled: false
+      minval: -0.0
+      maxval: 0.0
+    chance_default: 0.4
+  curriculum:
+    enabled: false
+    scale: 1.0
+    scaling_iterations: 75.0 
+  domain_randomization:
+    enabled: true
+    obs_delay:
+      enabled: true
+      gyro:  [0, 1]
+      accel: [0, 1]
+      qpos:  [0, 1]
+    params:
+      floor_friction:   0.4
+      dof_frictionloss: 0.1
+      dof_armature:     0.1
+      dof_damping:      0.1
+      torso_mass:       0.2
+      torso_com:        0.03
+      body_com:         0.01
+      gain_multiplier:  0.2
+      timeconst:        0.2
+      forcerange:       0.2
+      z0:               0.02
+  reward:
+    weights:
+      gait_tracking:       1.00
+      base_xyz_tracking:   3.00
+      base_quat_tracking:  1.00
+      base_vel_tracking:   0.00
+      vel_residual_size:   0.75
+      vel_residual_rate:   0.20
+      minimize_energy:     0.50
+      alive:               0.00
+      foot_contact:        0.00
+      global_xy_tracking:  0.00
+      global_z_tracking:   0.00
+      res_jt_rate:        -0.20
+    sigmas:
+      gait_tracking:      0.13
+      base_xyz_tracking:  0.001
+      base_quat_tracking: 0.03
+      vel_residual_size:  0.003
+      vel_residual_rate:  0.08
+      base_vel_tracking:  0.05
+      minimize_energy:    60.0
+      global_xy_tracking: 0.05
+      global_z_tracking:  0.13
+  termination:
+    enabled: true
+  command:
+    enabled:       false
+    lin_vel_x:     [-0.2, 0.2]
+    lin_vel_y:     [-0.1, 0.1]
+    ang_vel_z:     [0.0, 0.0]
+    vdes_duration: 7.0
+  push:
+    enabled:         true
+    major_lim:       5.0
+    minor_lim:       5.0
+    annulus_width:   0.1
+    nopush_duration: 9.0
+    push_duration:   0.6
+    max_vdes:        [0.08, 0.04, 0.01]
+learning_params:
+  ppo_params:
+    action_repeat: 1
+    batch_size: 256
+    clipping_epsilon: 0.2
+    discounting: 0.97
+    entropy_cost: 0.01
+    episode_length: 2000
+    learning_rate: 0.0003
+    max_grad_norm: 1.0
+    normalize_observations: false
+    num_envs: 8192
+    num_evals: 20
+    num_minibatches: 32
+    num_timesteps: 400000000
+    num_updates_per_batch: 4
+    reward_scaling: 1.0
+    unroll_length: 32ppo_params:
+    action_repeat: 1
+    batch_size: 256
+    clipping_epsilon: 0.2
+    discounting: 0.96
+    entropy_cost: 0.01
+    episode_length: 2000
+    learning_rate: 0.0003
+    max_grad_norm: 1.0
+    normalize_observations: false
+    num_envs: 4096
+    num_evals: 20
+    num_minibatches: 16
+    num_timesteps: 200000000
+    num_updates_per_batch: 4
+    reward_scaling: 1.0
+    unroll_length: 32
+  network_params:
+    policy_hidden_layer_sizes: [256, 128, 64]
+    value_hidden_layer_sizes:  [256, 128, 64]

@@ -1,0 +1,143 @@
+algorithm: ppo
+backend: np
+description: Reformatted feet flat reward
+env: canonicalRL
+env_config:
+  action_scale: 0.35
+  base_height_target: 0.45
+  command:
+    ang_vel_z:
+    - -0.5
+    - 0.5
+    enabled: true
+    lin_vel_x:
+    - -0.2
+    - 0.2
+    lin_vel_y:
+    - -0.1
+    - 0.1
+    vdes_duration: 9.12
+  ctrl_dt: 0.02
+  curriculum:
+    enabled: false
+    scale: 1.0
+    scaling_iterations: 400.0
+  domain_randomization:
+    enabled: true
+    obs_delay:
+      accel:
+      - 0
+      - 1
+      enabled: true
+      gyro:
+      - 0
+      - 1
+      qpos:
+      - 0
+      - 1
+    params:
+      body_com: 0.01
+      dof_armature: 0.1
+      dof_damping: 0.1
+      dof_frictionloss: 0.1
+      floor_friction: 0.1
+      forcerange: 0.1
+      gain_multiplier: 0.2
+      timeconst: 0.1
+      torso_com: 0.01
+      torso_mass: 0.1
+  filter_tau: 0.06
+  foot_height: 0.04
+  gait_freq: 1.4
+  history_length: 5
+  initialization:
+    add_random_jt:
+      enabled: false
+      maxval: 0.2
+      minval: -0.2
+    add_random_yaw: false
+    chance_default: 0.4
+    strategy: random-with-zero
+    vdes:
+    - 0.0
+    - 0.0
+    - 0.0
+    z0:
+    - 0.47
+    - 0.53
+  noise_scale: 1.0
+  push:
+    annulus_width: 0.6
+    enabled: true
+    major_lim: 8.0
+    max_vdes:
+    - 0.15
+    - 0.08
+    - 0.5
+    minor_lim: 5.0
+    nopush_duration: 5.0
+    push_duration: 0.6
+  reward:
+    sigmas:
+      angvel_tracking: 0.1
+      base_height: 0.1
+      feet_flat: 0.01
+      feet_stepping: 0.0005
+      jt_imitation: 3.0
+      linvel_tracking: 0.005
+      minimize_energy: 30.0
+      upright: 0.06
+    weights:
+      action_rate: -1.0
+      alive: 0.0
+      angvel_tracking: 3.0
+      base_height: 0.0
+      feet_air_time: 0.0
+      feet_apart: 0.0
+      feet_clearance: 0.0
+      feet_flat: 1
+      feet_height: 0.0
+      feet_slip: 0.0
+      feet_stepping: 0.0
+      jt_imitation: 1.0
+      linvel_tracking: 3.0
+      minimize_energy: 0.0
+      periodic_contact: 0.5
+      termination: -10.0
+      upright: 0.0
+  sim_dt: 0.004
+  termination:
+    base_height: 0.2
+    enabled: true
+  tracking: position
+git_hash: 535fd114d4886f63101d948a5e4c9998bcf6e166
+learning_params:
+  network_params:
+    policy_hidden_layer_sizes:
+    - 256
+    - 128
+    - 64
+    value_hidden_layer_sizes:
+    - 256
+    - 128
+    - 64
+  ppo_params:
+    action_repeat: 1
+    batch_size: 256
+    clipping_epsilon: 0.2
+    discounting: 0.97
+    entropy_cost: 0.01
+    episode_length: 2000
+    learning_rate: 0.0003
+    max_grad_norm: 1.0
+    normalize_observations: false
+    num_envs: 8192
+    num_evals: 20
+    num_minibatches: 32
+    num_timesteps: 400000000
+    num_updates_per_batch: 4
+    reward_scaling: 1.0
+    unroll_length: 32
+name: with-perts-fixed
+robot: BRUCE
+save_dir: icra2026-final/canonical
