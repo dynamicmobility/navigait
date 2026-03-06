@@ -1,186 +1,146 @@
 name: navigait
 channels:
   - defaults
-  - conda-forge
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
 dependencies:
   - _libgcc_mutex=0.1=main
   - _openmp_mutex=5.1=1_gnu
   - bzip2=1.0.8=h5eee18b_6
-  - ca-certificates=2025.8.3=hbd8a1cb_0
-  - comm=0.2.3=pyhe01879c_0
-  - debugpy=1.8.16=py312hbdd6827_0
-  - expat=2.7.1=h6a678d5_0
-  - importlib-metadata=8.7.0=pyhe01879c_1
-  - ipykernel=6.30.1=pyh82676e8_0
-  - jupyter_client=8.6.3=pyhd8ed1ab_1
-  - jupyter_core=5.8.1=pyh31011fe_0
-  - ld_impl_linux-64=2.40=h12ee557_0
+  - ca-certificates=2025.12.2=h06a4308_0
+  - expat=2.7.4=h7354ed3_0
+  - ld_impl_linux-64=2.44=h153f514_2
+  - libexpat=2.7.4=h7354ed3_0
   - libffi=3.4.4=h6a678d5_1
-  - libgcc-ng=11.2.0=h1234567_1
-  - libgomp=11.2.0=h1234567_1
-  - libsodium=1.0.20=heac8642_0
-  - libstdcxx-ng=11.2.0=h1234567_1
+  - libgcc=15.2.0=h69a1729_7
+  - libgcc-ng=15.2.0=h166f726_7
+  - libgomp=15.2.0=h4751f2c_7
+  - libnsl=2.0.0=h5eee18b_0
+  - libstdcxx=15.2.0=h39759b7_7
+  - libstdcxx-ng=15.2.0=hc03a8fd_7
   - libuuid=1.41.5=h5eee18b_0
   - libxcb=1.17.0=h9b100fa_0
+  - libzlib=1.3.1=hb25bd0a_0
   - ncurses=6.5=h7934f7d_0
-  - openssl=3.0.17=h5eee18b_0
-  - pip=25.1=pyhc872135_2
-  - platformdirs=4.4.0=pyhcf101f3_0
-  - psutil=7.0.0=py312hee96239_0
+  - openssl=3.5.5=h1b28b03_0
+  - packaging=25.0=py312h06a4308_1
+  - pip=26.0.1=pyhc872135_0
   - pthread-stubs=0.3=h0ce48e5_1
-  - python=3.12.11=h22baa00_0
-  - pyzmq=27.1.0=py312hcf8288c_0
+  - python=3.12.12=hd17a9e1_1
   - readline=8.3=hc2a1206_0
-  - setuptools=78.1.1=py312h06a4308_0
-  - sqlite=3.50.2=hb25bd0a_1
+  - setuptools=80.10.2=py312h06a4308_0
+  - sqlite=3.51.1=h3e8d24a_1
   - tk=8.6.15=h54e0aa7_0
-  - tornado=6.5.1=py312h5eee18b_0
-  - wheel=0.45.1=py312h06a4308_0
+  - tzdata=2026a=he532380_0
+  - wheel=0.46.3=py312h06a4308_0
   - xorg-libx11=1.8.12=h9b100fa_1
   - xorg-libxau=1.0.12=h9b100fa_0
   - xorg-libxdmcp=1.1.5=h9b100fa_0
   - xorg-xorgproto=2024.1=h5eee18b_1
-  - xz=5.6.4=h5eee18b_1
-  - zeromq=4.3.5=hb0a5e54_1
-  - zlib=1.2.13=h5eee18b_1
+  - xz=5.8.2=h448239c_0
+  - zlib=1.3.1=hb25bd0a_0
   - pip:
-      - about-time==4.2.1
-      - absl-py==2.3.1
-      - aiofiles==24.1.0
-      - alive-progress==3.3.0
-      - annotated-types==0.7.0
-      - asttokens==3.0.0
-      - autograd==1.8.0
+      - absl-py==2.4.0
+      - aiofiles==25.1.0
+      - asttokens==3.0.1
       - blinker==1.9.0
-      - brax==0.13.0
-      - certifi==2025.11.12
-      - cffi==2.0.0
-      - charset-normalizer==3.4.4
-      - chex==0.1.90
-      - choreographer==1.2.1
-      - click==8.2.1
-      - cma==4.4.2
+      - brax==0.14.1
+      - chex==0.1.91
+      - click==8.3.1
       - contourpy==1.3.3
       - cycler==0.12.1
+      - dataclasses-json==0.6.7
       - decorator==5.2.1
-      - deprecated==1.3.1
-      - dynamo-figures==0.1.2
-      - etils==1.13.0
-      - evdev==1.9.2
-      - executing==2.2.0
-      - flask==3.1.2
-      - flask-cors==6.0.1
-      - flax==0.11.2
-      - fonttools==4.59.2
-      - frozendict==2.4.6
-      - fsspec==2025.7.0
-      - gitdb==4.0.12
-      - gitpython==3.1.46
-      - glfw==2.9.0
-      - graphemeu==0.7.2
-      - h5py==3.14.0
-      - humanize==4.13.0
-      - idna==3.11
-      - imageio==2.37.2
-      - importlib-resources==6.5.2
-      - iniconfig==2.1.0
-      - ipython==9.5.0
+      - etils==1.14.0
+      - executing==2.2.1
+      - flask==3.1.3
+      - flask-cors==6.0.2
+      - flax==0.12.5
+      - fonttools==4.61.1
+      - fsspec==2026.2.0
+      - glfw==2.10.0
+      - h5py==3.16.0
+      - humanize==4.15.0
+      - ipython==9.11.0
       - ipython-pygments-lexers==1.1.1
       - itsdangerous==2.2.0
-      - jax==0.7.1
-      - jax-cuda12-pjrt==0.7.1
-      - jax-cuda12-plugin==0.7.1
-      - jaxlib==0.7.1
+      - jax==0.9.1
+      - jax-cuda13-pjrt==0.9.1
+      - jax-cuda13-plugin==0.9.1
+      - jaxlib==0.9.1
       - jaxopt==0.8.5
+      - jaxtyping==0.3.9
       - jedi==0.19.2
       - jinja2==3.1.6
-      - kaleido==1.2.0
       - kiwisolver==1.4.9
-      - logistro==2.0.1
-      - lxml==6.0.1
+      - lxml==6.0.2
       - markdown-it-py==4.0.0
-      - markupsafe==3.0.2
-      - matplotlib==3.10.6
-      - matplotlib-inline==0.1.7
+      - markupsafe==3.0.3
+      - marshmallow==3.26.2
+      - matplotlib==3.10.8
+      - matplotlib-inline==0.2.1
       - mdurl==0.1.2
-      - mediapy==1.2.4
+      - mediapy==1.2.6
       - ml-collections==1.1.0
-      - ml-dtypes==0.5.3
-      - moocore==0.2.0
-      - msgpack==1.1.1
-      - mujoco==3.3.5
-      - mujoco-mjx==3.3.5
-      - mujoco-python-viewer==0.1.4
-      - narwhals==2.15.0
-      - nest-asyncio==1.6.0
-      - numpy==2.2.6
-      - nvidia-cublas-cu12==12.9.1.4
-      - nvidia-cuda-cupti-cu12==12.9.79
-      - nvidia-cuda-nvcc-cu12==12.9.86
-      - nvidia-cuda-nvrtc-cu12==12.9.86
-      - nvidia-cuda-runtime-cu12==12.9.79
-      - nvidia-cudnn-cu12==9.12.0.46
-      - nvidia-cufft-cu12==11.4.1.4
-      - nvidia-cusolver-cu12==11.7.5.82
-      - nvidia-cusparse-cu12==12.5.10.65
-      - nvidia-nccl-cu12==2.27.7
-      - nvidia-nvjitlink-cu12==12.9.86
-      - nvidia-nvshmem-cu12==3.3.24
-      - opencv-python==4.12.0.88
+      - ml-dtypes==0.5.4
+      - msgpack==1.1.2
+      - mujoco==3.5.0
+      - mujoco-mjx==3.5.0
+      - mypy-extensions==1.1.0
+      - numpy==2.4.2
+      - nvidia-cublas==13.2.1.1
+      - nvidia-cuda-cccl==13.1.115
+      - nvidia-cuda-crt==13.1.115
+      - nvidia-cuda-cupti==13.1.115
+      - nvidia-cuda-nvcc==13.1.115
+      - nvidia-cuda-nvrtc==13.1.115
+      - nvidia-cuda-runtime==13.1.80
+      - nvidia-cudnn-cu13==9.19.1.2
+      - nvidia-cufft==12.1.0.78
+      - nvidia-cusolver==12.0.9.81
+      - nvidia-cusparse==12.7.3.1
+      - nvidia-nccl-cu13==2.29.7
+      - nvidia-nvjitlink==13.1.115
+      - nvidia-nvshmem-cu13==3.5.21
+      - nvidia-nvvm==13.1.115
+      - opencv-python==4.13.0.92
       - opt-einsum==3.4.0
-      - optax==0.2.5
-      - orbax-checkpoint==0.11.24
-      - orjson==3.11.5
-      - packaging==25.0
-      - pandas==2.3.2
-      - parso==0.8.5
+      - optax==0.2.6
+      - orbax-checkpoint==0.11.33
+      - orbax-export==0.0.8
+      - pandas==3.0.1
+      - parso==0.8.6
       - pexpect==4.9.0
-      - pillow==11.3.0
+      - pillow==12.1.1
       - playground==0.0.5
-      - plotly==6.5.1
-      - pluggy==1.6.0
       - prompt-toolkit==3.0.52
-      - protobuf==6.32.0
+      - protobuf==7.34.0
+      - psutil==7.2.2
       - ptyprocess==0.7.0
       - pure-eval==0.2.3
-      - pycparser==3.0
-      - pydantic==2.12.5
-      - pydantic-core==2.41.5
-      - pygame==2.6.1
       - pygments==2.19.2
-      - pymoo==0.6.1.6
-      - pynput==1.8.1
       - pyopengl==3.1.10
-      - pyparsing==3.2.3
-      - pytest==8.4.2
-      - pytest-timeout==2.4.0
+      - pyparsing==3.3.2
       - python-dateutil==2.9.0.post0
-      - python-xlib==0.33
-      - pytz==2025.2
-      - pyyaml==6.0.2
-      - requests==2.32.5
-      - rich==14.1.0
-      - scipy==1.16.1
-      - sentry-sdk==2.48.0
-      - simplejson==3.20.1
+      - pyyaml==6.0.3
+      - rich==14.3.3
+      - scipy==1.17.1
+      - simplejson==3.20.2
       - six==1.17.0
-      - smmap==5.0.2
       - stack-data==0.6.3
       - tensorboardx==2.6.4
-      - tensorstore==0.1.76
-      - toolz==1.0.0
-      - tqdm==4.67.1
+      - tensorstore==0.1.81
+      - toolz==1.1.0
+      - tqdm==4.67.3
       - traitlets==5.14.3
       - treescope==0.1.10
-      - trimesh==4.7.4
+      - trimesh==4.11.3
       - typing-extensions==4.15.0
-      - typing-inspection==0.4.2
-      - tzdata==2025.2
-      - urllib3==2.6.2
-      - wandb==0.23.1
-      - wcwidth==0.2.13
-      - werkzeug==3.1.3
-      - wrapt==2.0.1
+      - typing-inspect==0.9.0
+      - uvloop==0.22.1
+      - wadler-lindig==0.1.7
+      - warp-lang==1.12.0
+      - wcwidth==0.6.0
+      - werkzeug==3.1.6
       - zipp==3.23.0
+prefix: /home/njanwani/miniconda3/envs/navigait

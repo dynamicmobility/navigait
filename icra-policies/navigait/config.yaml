@@ -139,6 +139,6 @@ learning_params:
     num_updates_per_batch: 4
     reward_scaling: 1.0
     unroll_length: 32
-name: long
+name: navigait
 robot: BRUCE
-save_dir: icra2026-final/navigait/
+save_dir: icra-policies

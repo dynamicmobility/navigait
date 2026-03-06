@@ -8,7 +8,6 @@ import cv2
 from pathlib import Path
 from utils import geometry as geo
 import mediapy as media
-from external.roboprotobuf.protoutil.robotproto import bruce_pb2, atalante_pb2, robot_pb2
 
 def set_mpl_params():
     # Make fonts LaTeX-like (good for papers)
@@ -38,55 +37,6 @@ def get_mj_scene_option(contacts=True, perts=True, com=True):
     scene_option.flags[mujoco.mjtVisFlag.mjVIS_PERTFORCE] = perts
     scene_option.flags[mujoco.mjtVisFlag.mjVIS_COM] = com
     return scene_option
-
-class HardwarePlotter:
-
-    SENSOR_FIELDS = ['gyro', 'accel']
-    PROPRIO_FIELDS = ['qpos', 'qvel', 'qacc', 'contacts']
-    CTRL_FIELDS = ['qpos_des', 'qvel_des']
-    def __init__(
-        self,
-        record_time=True
-    ):
-        self.record_time = record_time
-        
-        self.data = {}
-        for key in HardwarePlotter.SENSOR_FIELDS + HardwarePlotter.PROPRIO_FIELDS + HardwarePlotter.CTRL_FIELDS:
-            self.data[key] = []
-        
-        if record_time:
-            self.data['time'] = []
-
-    def add_row(self, state_event: bruce_pb2.BruceEvent, ctrl_event: bruce_pb2.BruceControllerEvent):
-        if self.record_time:
-            self.data['time'].append(getattr(state_event, 'time'))
-
-        for key in HardwarePlotter.SENSOR_FIELDS:
-            self.data[key].append(list(getattr(state_event, key).data).copy())
-        for key in HardwarePlotter.PROPRIO_FIELDS:
-            self.data[key].append(list(getattr(state_event.proprioception, key).data).copy())
-        for key in HardwarePlotter.CTRL_FIELDS:
-            self.data[key].append(list(getattr(ctrl_event.motorcommand, key).data).copy())
-
-    def to_numpy(self):
-        for key in self.data:
-            self.data[key] = np.array(self.data[key])
-
-    def save_to_h5(self, filename):
-        with h5py.File(filename, 'w') as f:
-            for key in self.data:
-                f.create_dataset(key, data=np.array(self.data[key]))
-
-    @classmethod
-    def time_idx(cls, time, data):
-        if 'time' not in data:
-            raise ValueError("Time data is required for indexing.")
-        
-        time_array = np.array(data['time'])
-        idx = np.searchsorted(time_array, time)
-        if idx == 0 or idx == len(time_array):
-            raise ValueError("Time index out of bounds.")
-        return idx - 1
     
 class InfoPlotter:
     
@@ -218,7 +168,9 @@ def save_metrics(plotter, path=Path('visualization/metrics.png')):
     print(f'Saving metrics to {path}...')
     fig, axs = plotter.plot()
     fig.tight_layout()
-    plt.savefig(path, dpi=200)
+    ans = ensure_dir_exists(path)
+    if ans:
+        plt.savefig(path, dpi=200)
     plt.close(fig)
 
 def save_trajectories(
@@ -413,12 +365,21 @@ def save_trajectories(
         print(f'Saved sensor trajectories to {sensor_path}')
 
 
-
+def ensure_dir_exists(path):
+    ans = 'y'
+    if not path.parent.exists():
+        ans = input(f"Directory {path.parent} does not exist. Create it? [y/n]: ")
+        if ans.lower() in ['y', 'yes']:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            print("Skipping save.")
+            return False
+    return True
 
 def save_video(frames, env_cfg, path=Path('visualization/policy_rollout.mp4')):
     print(f'Saving video to {path}')
-    ans = 'y'
-    if ans.lower() in ['y', 'yes']:
+    ans = ensure_dir_exists(path)
+    if ans:
         media.write_video(path, frames, fps=round(1 / env_cfg.ctrl_dt))
 
 def load_dict_from_hdf5(filename):
