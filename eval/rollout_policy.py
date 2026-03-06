@@ -50,8 +50,8 @@ def main():
         inference_fn = jit_inference_fn,
         env          = env, 
         T            = T,
-        height       = 640,
-        width        = 480,
+        height       = 720,
+        width        = 1080,
         camera       = 'track',
         scene_option = get_mj_scene_option(contacts=False, com=False, perts=True),
         info_init_fn = set_disturbance
