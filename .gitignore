@@ -2,3 +2,33 @@
 .DS_Store
 
 .vscode/
+
+# Ignore all __pycache__ directories
+__pycache__/
+
+# Ignore all Python bytecode files
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore all results
+results/*
+old_results/*
+wip-results/*
+
+logs/*
+
+# Ignore visualization files
+visualization/*
+*.csv
+!icra-policies/**/*.csv
+
+MUJOCO_LOG.TXT
+
+.vscode/
+wip-imitation/
+morl-results/
+icra2026-final/
+paper_plots/
+logs/
+eval/icra/videos/
