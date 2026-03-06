@@ -1,4 +1,4 @@
-# RL-GL
+# NaviGait
 <p align="center">
     <img src="NaviGait_rollout.gif" alt="NaviGait Visualization">
 </p>
@@ -35,3 +35,17 @@ Edit `learning/training.sh` to reference the correct conda environment (likely j
 This will start a `tmux` session that you can exit out of. Note that a list of
 `tmux` shortcuts can be found [here](https://tmuxcheatsheet.com/). Training
 takes around 22-23 minutes on an RTX A4000 GPU.
+
+# Citation
+If you use NaviGait in your academic work, please use the following citation 
+
+```bibtex
+@inproceedings{janwani2025navigait,
+  title={NaviGait: Navigating Dynamically Feasible Gait Libraries using Deep Reinforcement Learning},
+  author={Janwani, Neil C and Madabushi, Varun and Tucker, Maegan},
+  booktitle={2026 IEEE International Conference on Robotics and Automation (ICRA)},
+  year={2026},
+  organization={IEEE},
+  url={https://dynamicmobility.github.io/navigait}
+}
+```
