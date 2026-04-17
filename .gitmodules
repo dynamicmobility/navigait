@@ -1,3 +1,6 @@
 [submodule "externals/bruce_trajopt"]
 	path = externals/bruce_trajopt
 	url = git@github.com:dynamicmobility/bruce_trajopt.git
+[submodule "presentation/_extensions/dynamicmobility/clean-nav"]
+	path = presentation/_extensions/dynamicmobility/clean-nav
+	url = https://github.com/dynamicmobility/quarto-theme.git

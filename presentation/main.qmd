@@ -1,0 +1,47 @@
+---
+title: "NaviGait: Navigating Dynamically Feasible Gait Libraries Using Deep Reinforcement Learning"
+author: "Neil Janwani, Varun Madabushi, Maegan Tucker"
+format:
+  clean-nav-revealjs:
+    slide-number: "c/t"
+    # Optional: point at a project-root nav-sections.js to override sections
+    include-in-header:
+      - text: |
+          <script src="nav-sections.js"></script>
+---
+
+## Introduction {.nav-intro}
+1. Why RL for bipeds? Good performance, but requires reward function, demonstrations can be hard to collect.
+2. Why trajectory optimization for bipeds? Hard constraints, easy to specify, fast, but brittle, not adaptive online
+
+Can we combine the specifiability and natural motion from trajectory optimization with the robust performance of RL?
+
+
+## Approach: NaviGait
+Show the high level overview
+
+## Gait Libraries: Trajectory Optimization via Hybrid-Zero Dynamics
+1. What is a gait library? How is it organized
+2. How do we generate each gait? What are we specifying?
+
+## Residual RL: Adapting to Disturbance
+1. How is the RL trained? What is its objective?
+2. joint correction vs velocity correction
+
+## Training NaviGait
+1. How is NaviGait trained? JAX? Mujoco playground, etc..
+
+## Results
+1. Show NaviGait walking on hardware
+2. Show it's ability to transition to different gaits
+
+## Results: Baseline Comparison
+1. We compare with work from 2021 and show improved imitation accuracy
+2. This enables better personalization of gaits
+
+## Limitations:
+1. Foot cross-over
+2. Imitation failure case (extreme maneuvers)
+
+## Conclusion
+1. what did we try? what did we achieve? what's next?
