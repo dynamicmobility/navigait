@@ -12,7 +12,7 @@ from mujoco_playground import wrapper
 
 def set_disturbance(state):
     state.info['push_override'] = True
-    state.info['push_override_xy'] = [30.0, 0.0]
+    state.info['push_override_xy'] = [0.0, 4.0]
     return state.info
 
 def main():
@@ -24,13 +24,15 @@ def main():
 
     # Create the environment
     env, env_cfg = create_environment(config, idealistic=True, animate=False)
-    env.params.initialization.vdes = [0.0, -0.05, 0.0]
+    env.params.initialization.vdes = [0.0, -0.0, 0.0]
     env.params.initialization.strategy = 'manual'
+    # env._jt_scale = 0.0
+    # env._vel_scale = 0.0
     # env.params.start_stance = 'right'
     # env.params.noise_scale = 1.0
     # env.params.domain_randomization.obs_delay.enabled = True
-    env.params.push.push_duration = 0.1
-    env.params.push.nopush_duration = 5.1
+    env.params.push.push_duration = 0.4
+    env.params.push.nopush_duration = 4.4
     # env.params.push.enabled = False
     # env.params.initialization.random_jt_calibration.enabled = False
     
@@ -43,15 +45,15 @@ def main():
     vx_lim = config['env_config']['command']['lin_vel_x']
     vy_lim = config['env_config']['command']['lin_vel_y']
     # Rollout the policy in the environment
-    T = 10.0
+    T = 8.0
     frames, reward_plotter, data_plotter, info_plotter = rollout(
         reset        = reset,
         step         = step, 
         inference_fn = jit_inference_fn,
         env          = env, 
         T            = T,
-        height       = 720,
-        width        = 1080,
+        height       = 1000,
+        width        = 1000,
         camera       = 'track',
         scene_option = get_mj_scene_option(contacts=False, com=False, perts=True),
         info_init_fn = set_disturbance

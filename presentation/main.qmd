@@ -10,15 +10,10 @@ format:
           <script src="nav-sections.js"></script>
 ---
 
-## Introduction {.nav-intro}
-1. Why RL for bipeds? Good performance, but requires reward function, demonstrations can be hard to collect.
-2. Why trajectory optimization for bipeds? Hard constraints, easy to specify, fast, but brittle, not adaptive online
+{{< include slides/introduction.qmd >}}
 
-Can we combine the specifiability and natural motion from trajectory optimization with the robust performance of RL?
+{{< include slides/approach.qmd >}}
 
-
-## Approach: NaviGait
-Show the high level overview
 
 ## Gait Libraries: Trajectory Optimization via Hybrid-Zero Dynamics
 1. What is a gait library? How is it organized
@@ -27,6 +22,11 @@ Show the high level overview
 ## Residual RL: Adapting to Disturbance
 1. How is the RL trained? What is its objective?
 2. joint correction vs velocity correction
+
+## BRUCE Humanoid Robot
+1. What is this robot? Are there any peculiarities?
+2. How were joint commands sent to the robot?
+3. What sensor data was available?
 
 ## Training NaviGait
 1. How is NaviGait trained? JAX? Mujoco playground, etc..

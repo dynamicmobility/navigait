@@ -1,0 +1,4 @@
+## Approach: NaviGait
+Show the high level overview
+
+![](../media/framework_local.svg){style="display: block; margin: 0 auto; max-width: 100%;"}

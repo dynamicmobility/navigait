@@ -94,7 +94,7 @@
     <!-- <light pos="3.5 0 6" dir="0 0 -10" diffuse="1 1 1" specular="0.3 0.3 0.3" directional="false"/> -->
     <!-- <light pos="0 5 6" dir="0 0 -10" diffuse="1 1 1" specular="0.3 0.3 0.3" directional="false"/> -->
 
-    <camera name="track" pos="1.1 -1.1 0.5" xyaxes="0.7 0.700 0.000 -0.171 0.296 0.940" mode="trackcom"/>
+    <camera name="track" pos="0.7 -0.7 0.3" xyaxes="0.7 0.700 0.000 -0.171 0.296 0.940" mode="trackcom"/>
       <inertial pos="0.022596000000000002 -0.000113 0.061400999999999997" mass="1.6168899999999999" fullinertia="0.0133543 0.0102363 0.0054710000000000002 -3.36e-06 0.0018272500000000001 -1.163e-05"/>
       <!-- <geom name="base_link_collision" class="unused" type="mesh" group="3" friction="1 0.0050000000000000001 0.0001" pos="0 0 0" euler="0 -0 0" mesh="base_link"/> -->
       <site name="base_IMU" pos="0 0 0" euler="0 0 0" size="0.01" rgba="1 0 0 0.0" type="sphere"/>

@@ -1,0 +1,26 @@
+## [Introduction: Bipedal Locomotion]{style="display: block; text-align: center;"} {.nav-intro}
+<div style="display: flex; gap: 1em; font-size: 0.8em;">
+<div style="flex: 1; border-right: 2px solid #282626; padding-right: 1em;">
+
+**[Reinforcement Learning]{style="display: block; text-align: center;"}**
+
+<!-- Learning *ill-defined* rewards from humans -->
+
+[Adaptable, robust, and highly capable robot control, but depends on *well-defined rewards* or *high-quality demonstrations*]{style="display: block; text-align: center;"}
+
+<video src="../media/canonical_push_demo.mp4" autoplay loop muted style="display: block; margin: 0 auto; max-width: 50%;"></video>
+
+</div>
+<div style="flex: 1; padding-left: 1em;">
+
+**[Trajectory Optimization]{style="display: block; text-align: center;"}**
+
+[Constructs appealing motion plans with physically meaningful constraints, yet is brittle and too slow to compute online.]{style="display: block; text-align: center;"}
+
+<video src="../media/GL_demo_fall.mp4" autoplay loop muted style="display: block; margin: 0 auto; max-width: 50%;"></video>
+
+</div>
+</div>
+
+[*Can we combine the specifiability and natural motion from trajectory optimization with the robust performance of RL?*
+]{style="display: block; text-align: center;"}
