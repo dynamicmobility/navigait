@@ -1,0 +1,2 @@
+## Gait Libraries: Blending and Interpolating
+1. How are gaits transitioned between? 

@@ -14,10 +14,9 @@ format:
 
 {{< include slides/approach.qmd >}}
 
+{{< include slides/trajopt.qmd >}}
 
-## Gait Libraries: Trajectory Optimization via Hybrid-Zero Dynamics
-1. What is a gait library? How is it organized
-2. How do we generate each gait? What are we specifying?
+{{< include slides/gaitlib.qmd >}}
 
 ## Residual RL: Adapting to Disturbance
 1. How is the RL trained? What is its objective?

@@ -1,0 +1,3 @@
+## Gait Libraries: Trajectory Optimization via Hybrid-Zero Dynamics
+1. What is a gait library? How is it organized
+2. How do we generate each gait? What are we specifying?
