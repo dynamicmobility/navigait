@@ -1,4 +1,4 @@
-## Imitation Learning
+## Imitation Learning: Direct Emulation of a Motion Plan {.nav-intro}
 
 **Another Approach**: train policy $\pi_{\theta}(a \mid s, \mathcal{X})$ *imitate* motion plan $\mathcal{X}$ from trajectory optimization.
 
@@ -19,11 +19,19 @@
 :::: {.columns}
 
 ::: {.column width="50%"}
-A
+<div style="position: relative; width: 60%; margin: 0 auto;">
+<video src="../media/imitation_fall.mp4" autoplay loop muted style="display: block; width: 100%;"></video>
+<div style="position: absolute; top: 0.5em; left: 0; right: 0; text-align: center; color: white; font-weight: light; text-shadow: 0 0 6px black, 0 0 3px black;">Imitation</div>
+</div>
 :::
 
 ::: {.column width="50%"}
-B
+::: {.fragment}
+<div style="position: relative; width: 60%; margin: 0 auto;">
+<video src="../media/navigait_save.mp4" data-autoplay loop muted style="display: block; width: 100%;"></video>
+<div style="position: absolute; top: 0.5em; left: 0; right: 0; text-align: center; color: white; font-weight: light; text-shadow: 0 0 6px black, 0 0 3px black;">Our approach</div>
+</div>
+:::
 :::
 
 ::::

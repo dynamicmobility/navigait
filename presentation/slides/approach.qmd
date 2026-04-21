@@ -2,6 +2,6 @@
 [NaviGait]{.smallcaps} structurally separates RL from trajectory optimization.
 
 1. Synthesize underlying gait library $\mathcal{G}$ via trajectory optimization.
-2. Use RL to strategcally select and correct motion plans in $\mathcal{G}$.
+2. Use RL to strategically select and correct motion plans in $\mathcal{G}$.
 
 ![](../media/framework_local.svg){style="display: block; margin: 0 auto; max-width: 50%;"}

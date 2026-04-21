@@ -1,4 +1,4 @@
-## Gait Libraries
+## Gait Libraries: Interpolating Between Motion Plans {.nav-intro}
 
 **Possible Approach**: transition between different motion plans $\{\mathcal{X}\}$ in a gait library $\mathcal{G}$ to stabilize the robot.
 
@@ -16,19 +16,6 @@
 
 <video src="../media/Durus.mp4" autoplay loop muted style="display: block; margin: 0 auto; max-width: 60%;"></video>
 :::
-
-::::
-
-:::: {.columns}
-
-::: {.column width="50%"}
-
-:::
-
-::: {.column width="50%"}
-
-:::
-
 
 ::::
 
