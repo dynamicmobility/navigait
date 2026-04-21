@@ -12,6 +12,18 @@ format:
 
 {{< include slides/introduction.qmd >}}
 
+{{< include slides/gl_approach.qmd >}}
+
+{{< include slides/imitation.qmd >}}
+
+<!-- ## Gait Library Interpolation
+
+- Show Jessy Grizzle video
+
+- Requires heuristic regulation, but has been shown to produce stable locomotion that respects the motion plans
+
+--- -->
+
 {{< include slides/approach.qmd >}}
 
 {{< include slides/trajopt.qmd >}}

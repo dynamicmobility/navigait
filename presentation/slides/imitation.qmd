@@ -1,0 +1,30 @@
+## Imitation Learning
+
+**Another Approach**: train policy $\pi_{\theta}(a \mid s, \mathcal{X})$ *imitate* motion plan $\mathcal{X}$ from trajectory optimization.
+
+:::: {.columns}
+
+::: {.column width="50%"}
+1. Easy to define reward $R$ for $\mathcal{X}$.
+:::
+
+::: {.column width="50%"}
+2. (Locally) natural + robust to $\mathcal{X}$
+:::
+
+::::
+
+*However, when should $\pi_{\theta}$ deviate from the desired motion plan $\mathcal{X}$?*
+
+:::: {.columns}
+
+::: {.column width="50%"}
+A
+:::
+
+::: {.column width="50%"}
+B
+:::
+
+::::
+

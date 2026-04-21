@@ -1,3 +1,28 @@
-## Gait Libraries: Trajectory Optimization via Hybrid-Zero Dynamics
-1. What is a gait library? How is it organized
-2. How do we generate each gait? What are we specifying?
+## Gait Libraries: Hybrid-Zero Dynamics
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Utilize FROST to generate gait $X(\alpha)$ composed via Bézier polynomials.
+
+Bézier polynomials are parametrized by *control points* $\alpha$.
+
+Gait characteristics like *step width* are included in additional constraints.
+:::
+
+::: {.column width="50%" style="font-size: 0.8em;"}
+\begin{align}
+    \overbrace{X(\alpha)^*}^{\textrm{Joint Trajectories}} = ~&\underset{X(\alpha)}{\textrm{argmin}} ~\overbrace{\mathcal{J}(X(\alpha))}^{Cost} \notag \\
+   \textrm{s.t.} & \quad \textrm{Closed Loop Dynamics} \\
+    & \quad \textrm{Impact Invariance} \\
+    & \quad \textrm{Physical Feasibility}  \\
+    & \quad \textrm{Additional Constraints}
+\end{align}
+:::
+
+
+::::
+
+::: {.fragment}
+<video src="../media/Bezier7Showcase.mp4" data-autoplay muted style="display: block; margin: -0.5em auto 0; max-width: 90%;"></video>
+:::

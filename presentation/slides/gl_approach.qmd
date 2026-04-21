@@ -1,0 +1,34 @@
+## Gait Libraries
+
+**Possible Approach**: transition between different motion plans $\{\mathcal{X}\}$ in a gait library $\mathcal{G}$ to stabilize the robot.
+
+:::: {.columns}
+
+::: {.column width="50%"}
+1. Physically meaningful motion specification for all $\mathcal{X}$.
+2. Tune control laws to transition to from current $\mathcal{X}_i$ to new gait $\mathcal{X}_j$.
+
+<img src="../media/gl_regulator.png" style="display: block; margin: -1em auto 0; max-width: 95%;" />
+:::
+
+::: {.column width="50%"}
+<p style="margin-top: 0.5em;">However, this can be fragile and requires heuristics to balance.</p>
+
+<video src="../media/Durus.mp4" autoplay loop muted style="display: block; margin: 0 auto; max-width: 60%;"></video>
+:::
+
+::::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+:::
+
+::: {.column width="50%"}
+
+:::
+
+
+::::
+

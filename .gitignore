@@ -32,3 +32,8 @@ icra2026-final/
 paper_plots/
 logs/
 eval/icra/videos/
+
+# Manim generated output (videos, partial renders, TeX intermediates, caches)
+presentation/manim-figures/media/
+presentation/manim-figures/**/__pycache__/
+presentation/manim-figures/**/*.log
