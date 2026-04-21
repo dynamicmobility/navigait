@@ -31,8 +31,8 @@ def main():
     # env.params.start_stance = 'right'
     # env.params.noise_scale = 1.0
     # env.params.domain_randomization.obs_delay.enabled = True
-    env.params.push.push_duration = 0.4
-    env.params.push.nopush_duration = 4.4
+    env.params.push.push_duration = 0.8
+    env.params.push.nopush_duration = 4.0
     # env.params.push.enabled = False
     # env.params.initialization.random_jt_calibration.enabled = False
     
