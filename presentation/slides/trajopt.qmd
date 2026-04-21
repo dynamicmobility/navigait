@@ -1,4 +1,4 @@
-## Gait Libraries: Hybrid-Zero Dynamics
+## Gait Libraries: Hybrid-Zero Dynamics {.nav-approach}
 
 :::: {.columns}
 

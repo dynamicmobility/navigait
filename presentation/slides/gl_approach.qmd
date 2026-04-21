@@ -12,9 +12,9 @@
 :::
 
 ::: {.column width="50%"}
-<p style="margin-top: 0.5em;">However, this can be fragile and requires heuristics to balance.</p>
+<p style="margin-top: 0.5em;">While this approach can work well, it requires significant heuristics and tuning.</p>
 
-<video src="../media/cassie_gl.mp4" autoplay loop muted style="display: block; margin: 3em auto 0; max-width: 100%;"></video>
+<video src="../media/cassie_gl.mp4" autoplay loop muted style="display: block; margin: 1.7em auto 0; max-width: 100%;"></video>
 :::
 
 ::::

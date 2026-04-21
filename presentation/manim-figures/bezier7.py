@@ -43,7 +43,6 @@ config.frame_height = _FRAME_W * (540 / 1920)
 
 FG = ManimColor("#1a1a1a")
 CURVE_COLOR = ManimColor("#1f77b4")
-CURVE_STRETCH_COLOR = ManimColor("#d62728")
 POLY_COLOR = ManimColor("#888888")
 CTRL_COLOR = BLUE_E
 
@@ -97,8 +96,7 @@ class Bezier7Showcase(Scene):
             ]
         )
 
-        self.play(FadeIn(dots, lag_ratio=0.1))
-        self.play(Create(polygon, lag_ratio=1.0), run_time=2.0)
+        self.play(FadeIn(dots), FadeIn(polygon), run_time=0.4)
         self.wait(0.3)
 
         def make_curve(pts: np.ndarray, color: ManimColor) -> ParametricFunction:
@@ -110,7 +108,7 @@ class Bezier7Showcase(Scene):
             )
 
         curve = make_curve(initial_pts, CURVE_COLOR)
-        self.play(Create(curve), run_time=1.5)
+        self.play(Create(curve), run_time=0.5)
         self.wait(0.3)
 
         # Stretch: move a few control points and redraw the curve + polygon.
@@ -130,7 +128,7 @@ class Bezier7Showcase(Scene):
                 for i in range(len(stretched_pts) - 1)
             ]
         )
-        new_curve = make_curve(stretched_pts, CURVE_STRETCH_COLOR)
+        new_curve = make_curve(stretched_pts, CURVE_COLOR)
 
         self.play(
             Transform(dots, new_dots),
@@ -140,10 +138,11 @@ class Bezier7Showcase(Scene):
         )
         self.wait(0.5)
 
-        # Second stretch: pull the endpoints apart horizontally.
+        # Second stretch: vertical shifts on a few interior control points only.
         stretched2 = stretched_pts.copy()
-        stretched2[0] = [-9.5, -1.4, 0.0]
-        stretched2[7] = [ 9.5,  2.1, 0.0]
+        stretched2[2] = [-3.4,  1.8, 0.0]
+        stretched2[3] = [-1.1, -1.8, 0.0]
+        stretched2[5] = [ 3.4, -1.6, 0.0]
 
         new_dots2 = VGroup(
             *[Dot(pt, color=CTRL_COLOR, radius=0.09) for pt in stretched2]
@@ -154,7 +153,7 @@ class Bezier7Showcase(Scene):
                 for i in range(len(stretched2) - 1)
             ]
         )
-        new_curve2 = make_curve(stretched2, CURVE_STRETCH_COLOR)
+        new_curve2 = make_curve(stretched2, CURVE_COLOR)
 
         self.play(
             Transform(dots, new_dots2),
