@@ -34,7 +34,9 @@ from manim import (
     Scene,
     Text,
     Transform,
+    ValueTracker,
     VGroup,
+    always_redraw,
     config,
 )
 
@@ -305,4 +307,115 @@ class BezierTransition(Scene):
             color=TRANS_COLOR, direction=UP,
         )
         self.play(FadeIn(trans_labels), run_time=0.6)
+        self.wait(1.0)
+
+        # --- Phase F: sweep τ_split back and forth, demonstrating the
+        # transition stays smooth for a wide range of split points. --- #
+        tracker = ValueTracker(tau_split)
+
+        def _dyn_split_line() -> DashedLine:
+            s = tracker.get_value()
+            return DashedLine(
+                axes.c2p(s, -2.2), axes.c2p(s, 2.2),
+                color=FG, stroke_opacity=0.6, dash_length=0.12,
+            )
+
+        def _dyn_split_label() -> Text:
+            s = tracker.get_value()
+            t = Text("τ_split", color=FG).scale(0.45)
+            t.next_to(axes.c2p(s, -2.2), DOWN, buff=0.15)
+            return t
+
+        def _dyn_b1_left() -> ParametricFunction:
+            s = tracker.get_value()
+            left_ys, _ = de_casteljau_split(b1_ys, s)
+            return _curve_mobject(axes, left_ys, 0.0, s, B1_COLOR)
+
+        def _dyn_dim_curve(full_ys: np.ndarray, color: ManimColor,
+                           side: str) -> ParametricFunction:
+            """side: 'left' or 'right'."""
+            s = tracker.get_value()
+            left_ys, right_ys = de_casteljau_split(full_ys, s)
+            if side == "left":
+                c = _curve_mobject(axes, left_ys, 0.0, s, color)
+            else:
+                c = _curve_mobject(axes, right_ys, s, 1.0, color)
+            c.set_stroke(opacity=0.2)
+            return c
+
+        def _trans_ys_now() -> np.ndarray:
+            s = tracker.get_value()
+            _, b1_r = de_casteljau_split(b1_ys, s)
+            _, b2_r = de_casteljau_split(b2_ys, s)
+            return interpolate_transition(b1_r, b2_r, deg=3)
+
+        def _dyn_trans_curve() -> ParametricFunction:
+            s = tracker.get_value()
+            return _curve_mobject(axes, _trans_ys_now(), s, 1.0, TRANS_COLOR)
+
+        def _dyn_trans_dots() -> VGroup:
+            s = tracker.get_value()
+            dots, _poly = _control_points_mobject(
+                axes, _trans_ys_now(), s, 1.0, TRANS_COLOR)
+            return dots
+
+        def _dyn_trans_poly() -> VGroup:
+            s = tracker.get_value()
+            _dots, poly = _control_points_mobject(
+                axes, _trans_ys_now(), s, 1.0, TRANS_COLOR)
+            return poly
+
+        def _dyn_trans_label() -> Text:
+            s = tracker.get_value()
+            t = Text("transition", color=TRANS_COLOR).scale(0.45)
+            t.next_to(axes.c2p(s, 2.2), UP, buff=0.1)
+            return t
+
+        def _dyn_trans_labels() -> VGroup:
+            s = tracker.get_value()
+            return _cp_labels(
+                axes, _trans_ys_now(), s, 1.0,
+                subscript="₁→₂", hat=False,
+                color=TRANS_COLOR, direction=UP,
+            )
+
+        # Swap static → dynamic. Remove first so nothing double-renders.
+        self.remove(
+            split_line, split_label,
+            b1_left_curve,
+            b1_right_curve, b2_left_curve, b2_right_curve,
+            trans_curve, trans_poly, trans_dots,
+            trans_label, trans_labels,
+        )
+
+        dyn_split_line = always_redraw(_dyn_split_line)
+        dyn_split_label = always_redraw(_dyn_split_label)
+        dyn_b1_left = always_redraw(_dyn_b1_left)
+        dyn_b1_right = always_redraw(
+            lambda: _dyn_dim_curve(b1_ys, B1_COLOR, "right"))
+        dyn_b2_left = always_redraw(
+            lambda: _dyn_dim_curve(b2_ys, B2_COLOR, "left"))
+        dyn_b2_right = always_redraw(
+            lambda: _dyn_dim_curve(b2_ys, B2_COLOR, "right"))
+        dyn_trans_curve = always_redraw(_dyn_trans_curve)
+        dyn_trans_poly = always_redraw(_dyn_trans_poly)
+        dyn_trans_dots = always_redraw(_dyn_trans_dots)
+        dyn_trans_label = always_redraw(_dyn_trans_label)
+        dyn_trans_labels = always_redraw(_dyn_trans_labels)
+
+        self.add(
+            dyn_split_line, dyn_split_label,
+            dyn_b1_right, dyn_b2_left, dyn_b2_right,
+            dyn_b1_left,
+            dyn_trans_poly, dyn_trans_dots, dyn_trans_curve,
+            dyn_trans_label, dyn_trans_labels,
+        )
+
+        # Clamp away from degenerate endpoints so the de Casteljau splits
+        # stay well-conditioned and the CP labels don't overlap too badly.
+        self.play(tracker.animate.set_value(0.20), run_time=2.5)
+        self.wait(0.4)
+        self.play(tracker.animate.set_value(0.75), run_time=3.0)
+        self.wait(0.4)
+        self.play(tracker.animate.set_value(0.45), run_time=2.0)
         self.wait(1.0)

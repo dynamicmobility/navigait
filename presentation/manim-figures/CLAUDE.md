@@ -124,3 +124,60 @@ versions before the first morph.
   simpler than animating each point with `MoveAlongPath` and Manim handles
   interpolation cleanly. **Exception:** `Polygon`s whose vertex set changes
   (e.g. convex hulls) — use the `ValueTracker` + `always_redraw` pattern above.
+
+## Scene: `BezierTransition` (`bezier_transition.py`)
+Visualises the `set_gait` transition from `control/gait.py` — same algorithm
+as `P1Bezier.split` + `P1Bezier.interpolate` in `control/bezier.py`, but
+implemented standalone in pure numpy so the scene doesn't import jax or the
+rest of the repo.
+
+- **Aspect ratio**: 1920×1080 (16:9). Unlike `bezier7.py`, this scene is NOT
+  the short 32:9 strip. `-qh` renders at real 1080p60 → folder
+  `media/videos/bezier_transition/1080p60/`.
+- **Two scalar Beziers** B1 (blue, lower) and B2 (red, upper), each degree
+  7 (8 control y-values), shown on a shared τ axis [0, 1]. CPs are given as
+  y-values only and placed visually at evenly-spaced x in the τ range.
+- **Animation flow**:
+  A) fade in axes, B1, B2, control polygons+dots, and α₁ⁱ / α₂ⁱ labels.
+  B) reveal dashed τ_split line.
+  C) de Casteljau split both curves → show four half-curves + polygons.
+  D) α̂₁ⁱ / α̂₂ⁱ labels on both right halves (the CPs used by
+     `interpolate`).
+  E) build transition curve (purple `#9467bd`), relabel CPs as α_{1→2}ⁱ,
+     drop construction polygons/dots instantly (`self.remove`, not
+     `FadeOut` — avoids the 1-second lingering-fade), dim the non-trajectory
+     curves to stroke-opacity 0.2.
+  F) sweep τ_split through 0.45 → 0.20 → 0.75 → 0.45 via a `ValueTracker`
+     + `always_redraw` block so the split line, all four scaffolding
+     halves, the transition curve, its polygon/dots, the "transition" text
+     and the 8 α_{1→2}ⁱ labels all recompute per frame. Sweep is clamped
+     to [0.2, 0.75] — narrower bounds avoid degenerate splits and label
+     pile-ups at the endpoints.
+
+### `set_opacity` on `ParametricFunction` renders a fill (gotcha)
+Calling `set_opacity(x)` on a `ParametricFunction` (or any open
+`VMobject`) sets both stroke AND fill opacity. Manim closes the open path
+into an implicit filled region, which renders as a translucent "shaded
+blob" under the curve. **Always use `.set_stroke(opacity=x)`** when you
+want to dim a curve without the fill artifact. `always_redraw` lambdas
+that rebuild dimmed curves must do the same.
+
+### Unicode instead of LaTeX for Greek + sub/superscripts
+LaTeX is unavailable on this machine (see LaTeX gotcha above), so labels
+like `α_1^i`, `α̂_2^i`, `α_{1→2}^i` use unicode:
+- `α` (U+03B1), `α̂` = `α` + combining hat `U+0302`
+- subscripts: `₀₁₂₃₄₅₆₇₈₉` (U+2080–U+2089) plus literal `→`
+- superscripts: `⁰¹²³⁴⁵⁶⁷⁸⁹` (U+2070, U+00B9–U+00B2–U+00B3, U+2074–U+2079)
+
+Helper `_cp_labels` accepts either an int (digits auto-converted to
+subscript) or a pre-formatted string (e.g. `"₁→₂"`) for the subscript.
+
+### Math helpers (pure numpy, all in `bezier_transition.py`)
+- `bezier_eval(ys, u)` — scalar Bernstein evaluation.
+- `de_casteljau_split(ys, z) → (left_ys, right_ys)` — matches
+  `P1Bezier.split` in `control/bezier.py`, which returns the RIGHT half
+  (verified against `COMBO_MAT_INV @ Z @ COMBO_MAT @ coeffs`).
+- `interpolate_transition(right_B1, right_B2, deg=3)` — first `deg` CPs
+  from B1's right half, last `deg` from B2's right half, middle averaged.
+  Mirrors `P1Bezier.interpolate`. For degree 7 this guarantees position +
+  first two derivatives match at both boundaries.
