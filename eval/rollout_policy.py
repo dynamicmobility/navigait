@@ -12,7 +12,7 @@ from mujoco_playground import wrapper
 
 def set_disturbance(state):
     state.info['push_override'] = True
-    state.info['push_override_xy'] = [0.0, 4.0]
+    state.info['push_override_xy'] = [0.0, 5.0]
     return state.info
 
 def main():
