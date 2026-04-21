@@ -1,13 +1,18 @@
-"""7th-degree Bezier polynomial demo.
+"""Two 7th-degree Bezier polynomials representing a 2-phase periodic gait
+trajectory for a walking robot joint (swing phase + stance phase).
 
-A 7th-degree Bezier curve is defined by 8 control points P0..P7:
+Each phase is a 7th-degree Bezier with 8 control points P0..P7:
     B(t) = sum_{i=0}^{7} C(7,i) * (1-t)^(7-i) * t^i * P_i,   t in [0, 1]
 
-Scene walks through:
-  1. Placing the 8 control points and connecting them with the control polygon.
-  2. Drawing the resulting Bezier curve.
-  3. "Stretching" the curve by animating several control points to new
-     locations so the viewer can see how the curve reshapes itself.
+Constraints enforced:
+  - Left curve B1 ends where right curve B2 begins (shared middle control
+    point) → C0 at the phase transition.
+  - B1 starts at the same joint position as B2 ends, with the same velocity
+    → periodic loop (C0 + C1 at the cycle boundary).
+
+With evenly-spaced x control points per curve, velocity matching at the loop
+boundary reduces to matching the y-offset between the first two / last two
+control points (here both set to 0 for a simple zero-velocity boundary).
 """
 
 from __future__ import annotations
@@ -15,6 +20,7 @@ from __future__ import annotations
 from math import comb
 
 import numpy as np
+from scipy.spatial import ConvexHull
 from manim import (
     BLUE_E,
     DOWN,
@@ -26,10 +32,12 @@ from manim import (
     Line,
     ManimColor,
     ParametricFunction,
+    Polygon,
     Scene,
     Text,
-    Transform,
+    ValueTracker,
     VGroup,
+    always_redraw,
     config,
 )
 
@@ -42,7 +50,8 @@ config.frame_width = _FRAME_W
 config.frame_height = _FRAME_W * (540 / 1920)
 
 FG = ManimColor("#1a1a1a")
-CURVE_COLOR = ManimColor("#1f77b4")
+CURVE_COLOR_LEFT = ManimColor("#1f77b4")
+CURVE_COLOR_RIGHT = ManimColor("#d62728")
 POLY_COLOR = ManimColor("#888888")
 CTRL_COLOR = BLUE_E
 
@@ -54,6 +63,63 @@ def bezier_point(control_points: np.ndarray, t: float) -> np.ndarray:
     for i, p in enumerate(control_points):
         point += comb(n, i) * (1 - t) ** (n - i) * t**i * p
     return point
+
+
+def _phase_pts(x_start: float, x_end: float, ys: list[float]) -> np.ndarray:
+    """Build 8 control points with x evenly spaced in [x_start, x_end]."""
+    assert len(ys) == 8
+    xs = np.linspace(x_start, x_end, 8)
+    return np.stack([xs, np.array(ys), np.zeros(8)], axis=1)
+
+
+def _make_curve(pts: np.ndarray, color: ManimColor) -> ParametricFunction:
+    return ParametricFunction(
+        lambda t: bezier_point(pts, t),
+        t_range=[0, 1],
+        color=color,
+        stroke_width=5,
+    )
+
+
+def _convex_hull(pts: np.ndarray, color: ManimColor) -> Polygon:
+    hull = ConvexHull(pts[:, :2])
+    verts = [np.array([pts[i, 0], pts[i, 1], 0.0]) for i in hull.vertices]
+    return Polygon(
+        *verts,
+        color=color,
+        stroke_width=1.5,
+        stroke_opacity=0.6,
+        fill_color=color,
+        fill_opacity=0.12,
+    )
+
+
+def _dots(left: np.ndarray, right: np.ndarray) -> VGroup:
+    all_pts = np.vstack([left[:-1], right])  # skip duplicate middle
+    return VGroup(*[Dot(p, color=CTRL_COLOR, radius=0.09) for p in all_pts])
+
+
+def _polygon(left: np.ndarray, right: np.ndarray) -> VGroup:
+    return VGroup(
+        *[Line(left[i], left[i + 1], color=POLY_COLOR, stroke_width=2)
+          for i in range(len(left) - 1)],
+        *[Line(right[i], right[i + 1], color=POLY_COLOR, stroke_width=2)
+          for i in range(len(right) - 1)],
+    )
+
+
+def _hulls(left: np.ndarray, right: np.ndarray) -> VGroup:
+    return VGroup(
+        _convex_hull(left, CURVE_COLOR_LEFT),
+        _convex_hull(right, CURVE_COLOR_RIGHT),
+    )
+
+
+def _curves(left: np.ndarray, right: np.ndarray) -> VGroup:
+    return VGroup(
+        _make_curve(left, CURVE_COLOR_LEFT),
+        _make_curve(right, CURVE_COLOR_RIGHT),
+    )
 
 
 class Bezier7Showcase(Scene):
@@ -72,93 +138,71 @@ class Bezier7Showcase(Scene):
         y_label.next_to(axes.y_axis.get_top(), RIGHT, buff=0.15)
         self.play(FadeIn(axes), FadeIn(x_label), FadeIn(y_label))
 
-        # Initial control points (8 total for degree 7).
-        initial_pts = np.array(
-            [
-                [-8.0, -1.4, 0.0],
-                [-5.7,  1.4, 0.0],
-                [-3.4, -1.2, 0.0],
-                [-1.1,  1.7, 0.0],
-                [ 1.1, -1.6, 0.0],
-                [ 3.4,  1.2, 0.0],
-                [ 5.7, -0.8, 0.0],
-                [ 8.0,  1.6, 0.0],
-            ]
-        )
+        # Initial control points. Shared middle point: left[-1] == right[0].
+        # Loop boundary has matching y (-1.0) and zero slope on both sides.
+        # Shared middle y-value varies across stretches (left[-1].y == right[0].y
+        # to preserve C0 continuity at the phase transition).
+        left_initial = _phase_pts(-8.0, 0.0,
+            [-1.0, -1.0, 1.0, 1.8, 1.5, 0.5, 0.1, 0.4])
+        right_initial = _phase_pts(0.0, 8.0,
+            [0.4, 0.0, -0.5, -1.0, -1.2, -1.2, -1.0, -1.0])
 
-        dots = VGroup(
-            *[Dot(pt, color=CTRL_COLOR, radius=0.09) for pt in initial_pts]
-        )
-        polygon = VGroup(
-            *[
-                Line(initial_pts[i], initial_pts[i + 1], color=POLY_COLOR, stroke_width=2)
-                for i in range(len(initial_pts) - 1)
-            ]
-        )
+        left_s1 = _phase_pts(-8.0, 0.0,
+            [-1.0, -1.0, -0.2, 2.1, 2.1, 1.8, 1.4, 1.3])
+        right_s1 = _phase_pts(0.0, 8.0,
+            [1.3, 0.2, -1.0, -1.8, -2.1, -1.9, -1.0, -1.0])
 
-        self.play(FadeIn(dots), FadeIn(polygon), run_time=0.4)
+        left_s2 = _phase_pts(-8.0, 0.0,
+            [-1.0, -1.0, 2.1, 1.3, -0.8, 0.5, -0.6, -0.9])
+        right_s2 = _phase_pts(0.0, 8.0,
+            [-0.9, 1.5, -0.3, -1.2, -2.1, -2.1, -1.0, -1.0])
+
+        # Phase A: static reveal of initial configuration.
+        dots_s = _dots(left_initial, right_initial)
+        poly_s = _polygon(left_initial, right_initial)
+        hulls_s = _hulls(left_initial, right_initial)
+        curves_s = _curves(left_initial, right_initial)
+
+        self.play(FadeIn(dots_s), FadeIn(poly_s), run_time=0.4)
+        self.wait(0.2)
+        self.play(FadeIn(hulls_s), run_time=0.5)
+        self.wait(0.2)
+        self.play(Create(curves_s), run_time=0.5)
         self.wait(0.3)
 
-        def make_curve(pts: np.ndarray, color: ManimColor) -> ParametricFunction:
-            return ParametricFunction(
-                lambda t: bezier_point(pts, t),
-                t_range=[0, 1],
-                color=color,
-                stroke_width=5,
-            )
+        # Phase B: swap to always_redraw versions for the morphing animations,
+        # so the convex hull is recomputed from scratch every frame rather
+        # than interpolating Polygon vertices (which causes the "rotation"
+        # artifact when hull vertex ordering changes).
+        self.remove(dots_s, poly_s, hulls_s, curves_s)
 
-        curve = make_curve(initial_pts, CURVE_COLOR)
-        self.play(Create(curve), run_time=0.5)
-        self.wait(0.3)
+        state = {
+            "src_l": left_initial.copy(), "dst_l": left_initial.copy(),
+            "src_r": right_initial.copy(), "dst_r": right_initial.copy(),
+        }
+        alpha = ValueTracker(1.0)
 
-        # Stretch: move a few control points and redraw the curve + polygon.
-        stretched_pts = initial_pts.copy()
-        stretched_pts[1] = [-5.7,  2.2, 0.0]
-        stretched_pts[3] = [-1.1,  2.4, 0.0]
-        stretched_pts[4] = [ 1.1, -2.2, 0.0]
-        stretched_pts[6] = [ 6.4, -1.8, 0.0]
-        stretched_pts[7] = [ 8.6,  2.1, 0.0]
+        def cur():
+            a = alpha.get_value()
+            L = state["src_l"] * (1 - a) + state["dst_l"] * a
+            R = state["src_r"] * (1 - a) + state["dst_r"] * a
+            return L, R
 
-        new_dots = VGroup(
-            *[Dot(pt, color=CTRL_COLOR, radius=0.09) for pt in stretched_pts]
-        )
-        new_polygon = VGroup(
-            *[
-                Line(stretched_pts[i], stretched_pts[i + 1], color=POLY_COLOR, stroke_width=2)
-                for i in range(len(stretched_pts) - 1)
-            ]
-        )
-        new_curve = make_curve(stretched_pts, CURVE_COLOR)
+        dyn_dots = always_redraw(lambda: _dots(*cur()))
+        dyn_poly = always_redraw(lambda: _polygon(*cur()))
+        dyn_hulls = always_redraw(lambda: _hulls(*cur()))
+        dyn_curves = always_redraw(lambda: _curves(*cur()))
+        self.add(dyn_hulls, dyn_poly, dyn_curves, dyn_dots)
 
-        self.play(
-            Transform(dots, new_dots),
-            Transform(polygon, new_polygon),
-            Transform(curve, new_curve),
-            run_time=2,
-        )
+        def morph_to(new_l: np.ndarray, new_r: np.ndarray, run_time: float) -> None:
+            state["src_l"] = state["dst_l"].copy()
+            state["src_r"] = state["dst_r"].copy()
+            state["dst_l"] = new_l.copy()
+            state["dst_r"] = new_r.copy()
+            alpha.set_value(0.0)
+            self.play(alpha.animate.set_value(1.0), run_time=run_time)
+
+        morph_to(left_s1, right_s1, 2.0)
         self.wait(0.5)
-
-        # Second stretch: vertical shifts on a few interior control points only.
-        stretched2 = stretched_pts.copy()
-        stretched2[2] = [-3.4,  1.8, 0.0]
-        stretched2[3] = [-1.1, -1.8, 0.0]
-        stretched2[5] = [ 3.4, -1.6, 0.0]
-
-        new_dots2 = VGroup(
-            *[Dot(pt, color=CTRL_COLOR, radius=0.09) for pt in stretched2]
-        )
-        new_polygon2 = VGroup(
-            *[
-                Line(stretched2[i], stretched2[i + 1], color=POLY_COLOR, stroke_width=2)
-                for i in range(len(stretched2) - 1)
-            ]
-        )
-        new_curve2 = make_curve(stretched2, CURVE_COLOR)
-
-        self.play(
-            Transform(dots, new_dots2),
-            Transform(polygon, new_polygon2),
-            Transform(curve, new_curve2),
-            run_time=2,
-        )
+        morph_to(left_s2, right_s2, 2.0)
         self.wait(0.8)

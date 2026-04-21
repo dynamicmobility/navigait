@@ -1,5 +1,7 @@
 ## Gait Libraries: Hybrid-Zero Dynamics {.nav-approach}
 
+![](../media/framework_gl.svg){.absolute top=-30 right=-100 width="35%" style="z-index: 10;"}
+
 :::: {.columns}
 
 ::: {.column width="50%"}
@@ -10,7 +12,7 @@ Bézier polynomials are parametrized by *control points* $\alpha$.
 Gait characteristics like *step width* are included in additional constraints.
 :::
 
-::: {.column width="50%" style="font-size: 0.8em;"}
+::: {.column width="50%" style="font-size: 0.8em; margin-top: 0em;"}
 \begin{align}
     \overbrace{X(\alpha)^*}^{\textrm{Joint Trajectories}} = ~&\underset{X(\alpha)}{\textrm{argmin}} ~\overbrace{\mathcal{J}(X(\alpha))}^{Cost} \notag \\
    \textrm{s.t.} & \quad \textrm{Closed Loop Dynamics} \\

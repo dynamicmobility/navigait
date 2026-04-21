@@ -49,3 +49,11 @@ If you use NaviGait in your academic work, please use the following citation
   url={https://dynamicmobility.github.io/navigait}
 }
 ```
+
+ i would like you to create a manim animation of transitioning from one bezier curve to another. please refer to       
+  control/gait.py for how i implemented this in my method. in short, there should be two curves. B1 as below, and B2 on 
+   top, in the same plot. then, at a tau_split somwehere in the middle of the curves, split both of them (so bezier has 
+   a right and left side). then, from tau_split in B1, create a bezier transition to the end of B2. this transition     
+  should be smooth and match the position and velocity of B1 and B2 at their respective connection points (at tau_split 
+   in B1 and at the end of B2). this operation is implemented in set_gait in control/gait.py. let me know if you have   
+  any questions 

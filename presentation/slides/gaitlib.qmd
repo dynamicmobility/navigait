@@ -1,2 +1,4 @@
 ## Gait Libraries: Blending and Interpolating
-1. How are gaits transitioned between? 
+<!-- 1. How are gaits transitioned between? -->
+
+<video src="../media/BezierTransition.mp4" data-autoplay muted style="display: block; margin: 0 auto; max-width: 100%;"></video>
