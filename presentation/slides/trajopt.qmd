@@ -1,6 +1,6 @@
 ## Gait Libraries: Hybrid-Zero Dynamics {.nav-approach}
 
-![](../media/framework_gl.svg){.absolute top=-30 right=-100 width="35%" style="z-index: 10;"}
+![](../media/framework_gl.svg){.absolute top=-30 right=-130 width="35%" style="z-index: 10;"}
 
 :::: {.columns}
 

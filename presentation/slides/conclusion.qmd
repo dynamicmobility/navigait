@@ -1,0 +1,22 @@
+## Conclusion and Future Work {.nav-end}
+We present [NaviGait]{.smallcaps}, a framework for applying RL to strategically transition between motion plans within a gait library.
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+1. Learns core locomotion skills faster than baseline approaches
+2. Achieves similar robustness as Imitation RL.
+3. Demonstrates superior imitation accuracy over Imitation RL.
+:::
+
+::: {.column width="30%"}
+![](../media/Hero_Figure_presentation.svg){fig-align="center" style="max-width: 95%; margin-top: -1em;"}
+:::
+
+::::
+
+However, [NaviGait]{.smallcaps} has its limitations, paving way for future work
+
+1. Foot cross-over skills
+2. Discouraged from extreme maneuvers

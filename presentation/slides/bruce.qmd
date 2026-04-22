@@ -1,0 +1,27 @@
+## BRUCE Humanoid Robot {.nav-approach}
+
+![](../media/framework_bruce.svg){.absolute top=-30 right=-130 width="35%" style="z-index: 10;"}
+
+
+:::: {.columns}
+
+::: {.column width="60%"}
+We utilize the Westwood Robotics BRUCE Humanoid Robot
+
+Desired joint $\hat{q}_d$ are tracked via low-level PD-control.
+
+We improve simulation fidelity by including 
+
+1. Differential drive mechanism (hip) 
+2. 4-bar linkage mechanism (knee-ankle)
+:::
+
+::: {.column width="21%"}
+![](../media/bruce_structure.png){style="max-width: 100%;"}
+:::
+
+::: {.column width="19%"}
+![](../media/bruce_hw_low_bg.png){style="max-width: 100%;"}
+:::
+
+::::

@@ -15,6 +15,28 @@ def set_disturbance(state):
     state.info['push_override_xy'] = [0.0, 5.0]
     return state.info
 
+        
+def show_locomotion(state, vxlim=0.2, vylim=0.1, wzlim=1.0, forward=4.0, sideways=4.0, turning=3.0, everything=2.0):
+    t = float(state.data.time)
+    info = state.info.copy()
+    vx, vy, wz = [0.0] * 3
+    if t < forward:
+        omega = 2 * np.pi * 1 / forward * 0.5
+        vx = vxlim * np.sin(omega * t)
+    elif t < forward + sideways:
+        omega = 2 * np.pi * 1 / sideways * 0.5
+        vy = -vylim * np.sin(omega * (t - forward))
+    elif t < forward + sideways + turning:
+        omega = 2 * np.pi * 1 / turning * 0.25
+        wz = -wzlim * np.sin(omega * (t - (forward + sideways)))
+    else:
+        vx = 0
+        vy = 0
+        wz = -wzlim
+
+    info['vdes'] = np.array([vx, vy, wz])
+    return info
+
 def main():
     # Set up the GPU environment
     # run_setup()
@@ -33,7 +55,7 @@ def main():
     # env.params.domain_randomization.obs_delay.enabled = True
     env.params.push.push_duration = 0.8
     env.params.push.nopush_duration = 4.0
-    # env.params.push.enabled = False
+    env.params.push.enabled = False
     # env.params.initialization.random_jt_calibration.enabled = False
     
     # Load the model    
@@ -45,7 +67,7 @@ def main():
     vx_lim = config['env_config']['command']['lin_vel_x']
     vy_lim = config['env_config']['command']['lin_vel_y']
     # Rollout the policy in the environment
-    T = 8.0
+    T = 12.0
     frames, reward_plotter, data_plotter, info_plotter = rollout(
         reset        = reset,
         step         = step, 
@@ -56,8 +78,8 @@ def main():
         width        = 1000,
         camera       = 'track',
         scene_option = get_mj_scene_option(contacts=False, com=False, perts=True),
-        info_init_fn = set_disturbance
-        # info_step_fn = lambda state: circle_vel(state, vx_lim[1], vy_lim[1], 1 / T)
+        # info_init_fn = set_disturbance,
+        info_step_fn = lambda state: show_locomotion(state)
     )
 
     # # Save metrics

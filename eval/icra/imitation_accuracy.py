@@ -12,6 +12,7 @@ from mujoco_playground import wrapper
 import matplotlib.pyplot as plt
 import utils.geometry as geo
 from matplotlib.colors import LinearSegmentedColormap
+from utils.plotting import save_video, save_metrics, save_trajectories, get_mj_scene_option
 from tqdm import tqdm
 import yaml
 FONTSIZE=22
@@ -19,7 +20,7 @@ SIDE_LENGTH = 12
 VX_LIM = [-0.2, 0.2]
 VY_LIM = [-0.1, 0.1]
 
-def run_imitation_accuracy(env, reset, step, inference_fn, vdes, T=2.0, info_init_fn=lambda state: state.info):
+def run_imitation_accuracy(env, reset, step, inference_fn, vdes, T=2.0, info_init_fn=lambda state: state.info, gen_vid=False):
     env.params.initialization.vdes = list(vdes)
     env.params.initialization.strategy = 'manual'
     # env.params.noise_scale = 1.0
@@ -31,11 +32,12 @@ def run_imitation_accuracy(env, reset, step, inference_fn, vdes, T=2.0, info_ini
         inference_fn = inference_fn,
         env          = env, 
         T            = T,
-        height       = 640,
-        width        = 480,
+        height       = 1000,
+        width        = 1000,
         # info_step_fn = lambda state: circle_vel(state, vx_lim[1], vy_lim[1], 1 / T),
         info_plot_key= ['gait_history', 'base_history', 'qpos_history'],
-        gen_vid=False,
+        scene_option = get_mj_scene_option(contacts=False, com=False, perts=True),
+        gen_vid=gen_vid,
         show_progress=False,
         info_init_fn=info_init_fn
     )

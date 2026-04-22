@@ -1,4 +1,4 @@
-## Gait Libraries: Blending and Interpolating
+## Gait Libraries: Blending and Interpolating {.nav-approach}
 <!-- 1. How are gaits transitioned between? -->
 
 <!-- Six phase videos stacked on top of each other. Each is wrapped in a
@@ -6,6 +6,10 @@
      `startEmbeddedMedia` (which does `queryAll(fragmentEl, 'video')`)
      autoplays the inner video. Each phase's first frame matches the
      previous phase's last frame, so transitions look seamless. -->
+
+![](../media/framework_gl.svg){.absolute top=-30 right=-130 width="35%" style="z-index: 10;"}
+
+
 <div class="r-stack" style="margin: 0 auto; max-width: 100%;">
 <div class="fragment" data-fragment-index="0"><video src="../media/BezierPhaseA.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
 <div class="fragment" data-fragment-index="1"><video src="../media/BezierPhaseB.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>

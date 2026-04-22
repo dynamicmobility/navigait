@@ -1,5 +1,47 @@
-## Residual RL: Adapting to Disturbance
-We utilize RL to *transition* between and *correct* $\mathcal{X}_i \in \mathcal{G}$.
+## Residual RL: Adapting to Disturbance {.nav-approach}
+
+![](../media/framework_rl.svg){.absolute top=-30 right=-130 width="35%" style="z-index: 10;"}
+
+We utilize RL to concurrently achieve two objectives:
+
+:::: {.columns}
+
+::: {.column width="30%"}
+1. *Transition between* $\mathcal{X}_i \in \mathcal{G}$ via $\Delta v$.
+2. *Correct* the current $\mathcal{X}_i$ via $\Delta q$.
+:::
+
+::: {.column width="45%"}
+<video src="../media/NaviGait_hero_push_cropped.mp4" data-autoplay loop muted playsinline style="max-width: 100%;"></video>
+:::
+
+::: {.column width="25%"}
+<video src="../media/hero_push_vr.mp4" data-autoplay loop muted playsinline style="max-width: 100%;"></video>
+:::
+
+::::
+
+:::: {.columns}
+
+::: {.column width="60%"}
+<p style="text-align: center; text-decoration: underline;">Reward Function</p>
+<div style="font-size: 0.9em;">
 \begin{align}
-R_t = R_{\textrm{Imitation}}
+    R_{\textrm{NaviGait}}^t(s, a) =~&R_{\text{Gait}}^t + R_{\text{Base Cartesian}}^t + \\
+    &R_{\text{Base Orientation}}^t + R_{\text{torque}} + \\
+    &R_{\Delta v \text{ size}}^t + R_{\Delta v \text{ rate}} + R_{\Delta q \text{ rate}}. \notag
 \end{align}
+</div>
+:::
+
+::: {.column width="40%"}
+<p style="text-align: center; text-decoration: underline;">Observation (histories)</p>
+
+1. Sensors: IMU + encoders.
+2. Reference gait selection.
+3. Previous $\pi_\theta$ outputs.
+:::
+
+
+
+::::

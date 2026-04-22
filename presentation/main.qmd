@@ -1,6 +1,6 @@
 ---
 title: "NaviGait: Navigating Dynamically Feasible Gait Libraries Using Deep Reinforcement Learning"
-author: "Neil Janwani, Varun Madabushi, Maegan Tucker"
+author: "Neil Janwani$^*$, Varun Madabushi$^*$, Maegan Tucker"
 format:
   clean-nav-revealjs:
     slide-number: "c/t"
@@ -32,25 +32,15 @@ format:
 
 {{< include slides/residual_rl.qmd >}}
 
-## BRUCE Humanoid Robot
-1. What is this robot? Are there any peculiarities?
-2. How were joint commands sent to the robot?
-3. What sensor data was available?
+{{< include slides/bruce.qmd >}}
 
-## Training NaviGait
-1. How is NaviGait trained? JAX? Mujoco playground, etc..
+<!-- ## Training NaviGait
+1. How is NaviGait trained? JAX? Mujoco playground, etc.. -->
 
-## Results
-1. Show NaviGait walking on hardware
-2. Show it's ability to transition to different gaits
+{{< include slides/results.qmd >}}
 
-## Results: Baseline Comparison
-1. We compare with work from 2021 and show improved imitation accuracy
-2. This enables better personalization of gaits
+{{< include slides/imitation_accuracy.qmd >}}
 
-## Limitations:
-1. Foot cross-over
-2. Imitation failure case (extreme maneuvers)
+{{< include slides/conclusion.qmd >}}
 
-## Conclusion
-1. what did we try? what did we achieve? what's next?
+{{< include slides/thank_you.qmd >}}

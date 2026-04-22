@@ -1,0 +1,25 @@
+## Results: Imitation Accuracy {.nav-results}
+We demonstrate that [NaviGait]{.smallcaps} has improved imitation accuracy.
+
+:::: {.columns}
+
+::: {.column width="50%"}
+<div style="position: relative; width: 60%; margin: 0 auto;">
+<video src="../media/im_accuray.mp4" data-autoplay loop muted playsinline style="display: block; width: 90%;"></video>
+<div style="position: absolute; top: 0.5em; left: 0; right: 0; text-align: center; color: white; font-weight: light; text-shadow: 0 0 6px black, 0 0 3px black;">Imitation RL</div>
+</div>
+:::
+
+::: {.column width="50%"}
+<div style="position: relative; width: 60%; margin: 0 auto;">
+<video src="../media/ng_accuray.mp4" data-autoplay loop muted playsinline style="display: block; width: 90%;"></video>
+<div style="position: absolute; top: 0.5em; left: 0; right: 0; text-align: center; color: white; font-weight: light; text-shadow: 0 0 6px black, 0 0 3px black;"><span class="smallcaps">NaviGait</span></div>
+</div>
+:::
+
+::::
+
+<div style="text-align: center;">
+<video src="../media/imitation_push.mp4" data-autoplay loop muted playsinline style="max-width: 80%;"></video>
+</div>
+
