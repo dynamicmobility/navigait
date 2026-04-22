@@ -1,0 +1,5 @@
+## Residual RL: Adapting to Disturbance
+We utilize RL to *transition* between and *correct* $\mathcal{X}_i \in \mathcal{G}$.
+\begin{align}
+R_t = R_{\textrm{Imitation}}
+\end{align}

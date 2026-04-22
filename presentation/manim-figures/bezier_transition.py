@@ -155,11 +155,28 @@ def _cp_labels(axes: Axes, ys: np.ndarray,
     return labels
 
 
-# ---------- scene ---------- #
+# ---------- shared world ---------- #
+#
+# All static mobjects used across the phases are built once by
+# `_BezierWorld.setup_world` and stashed on self. Each phase Scene picks
+# which mobjects to `self.add` (as the static "starting state" inherited
+# from the previous phase) and which to animate into existence. The end
+# state of phase N visually equals the start state of phase N+1, so the
+# per-phase MP4s stitch seamlessly when advanced as reveal.js fragments.
 
-class BezierTransition(Scene):
-    def construct(self):
-        # Axes
+
+B1_YS = np.array([-1.5, -1.3, -0.4, -0.2, -0.6, -1.1, -1.4, -1.3])
+B2_YS = np.array([0.8, 1.6, 1.9, 1.3, 0.9, 1.3, 1.7, 1.5])
+TAU_SPLIT = 0.45
+
+
+class _BezierWorld:
+    """Mixin for Scene subclasses. Builds every mobject used by any phase."""
+
+    def setup_world(self):
+        b1_ys, b2_ys, tau_split = B1_YS, B2_YS, TAU_SPLIT
+        self.b1_ys, self.b2_ys, self.tau_split = b1_ys, b2_ys, tau_split
+
         axes = Axes(
             x_range=[0, 1, 0.25],
             y_range=[-2.2, 2.2, 1],
@@ -172,16 +189,7 @@ class BezierTransition(Scene):
         x_label.next_to(axes.x_axis.get_right(), DOWN, buff=0.15)
         y_label = Text("B(τ)", color=FG, slant="ITALIC").scale(0.5)
         y_label.next_to(axes.y_axis.get_top(), RIGHT, buff=0.15)
-        self.play(FadeIn(axes), FadeIn(x_label), FadeIn(y_label))
 
-        # Two 7th-degree Bezier curves — control y-values only.
-        # B1 sits lower, B2 sits higher; same τ range [0, 1].
-        b1_ys = np.array([-1.5, -1.3, -0.4, -0.2, -0.6, -1.1, -1.4, -1.3])
-        b2_ys = np.array([0.8, 1.6, 1.9, 1.3, 0.9, 1.3, 1.7, 1.5])
-
-        tau_split = 0.45
-
-        # --- Phase A: draw B1 and B2 in full --- #
         b1_dots, b1_poly = _control_points_mobject(axes, b1_ys, 0.0, 1.0, B1_COLOR)
         b2_dots, b2_poly = _control_points_mobject(axes, b2_ys, 0.0, 1.0, B2_COLOR)
         b1_curve = _curve_mobject(axes, b1_ys, 0.0, 1.0, B1_COLOR)
@@ -192,35 +200,25 @@ class BezierTransition(Scene):
         b2_label = Text("B₂", color=B2_COLOR).scale(0.55)
         b2_label.next_to(axes.c2p(1.0, bezier_eval(b2_ys, 1.0)), RIGHT, buff=0.2)
 
-        self.play(FadeIn(b1_poly), FadeIn(b1_dots),
-                  FadeIn(b2_poly), FadeIn(b2_dots), run_time=0.6)
-        self.play(Create(b1_curve), Create(b2_curve), run_time=1.0)
-        self.play(FadeIn(b1_label), FadeIn(b2_label), run_time=0.3)
-
         b1_cp_labels = _cp_labels(axes, b1_ys, 0.0, 1.0,
                                   subscript=1, hat=False,
                                   color=B1_COLOR, direction=DOWN)
         b2_cp_labels = _cp_labels(axes, b2_ys, 0.0, 1.0,
                                   subscript=2, hat=False,
                                   color=B2_COLOR, direction=UP)
-        self.play(FadeIn(b1_cp_labels), FadeIn(b2_cp_labels), run_time=0.6)
-        self.wait(0.4)
 
-        # --- Phase B: show τ_split --- #
         split_line = DashedLine(
             axes.c2p(tau_split, -2.2), axes.c2p(tau_split, 2.2),
             color=FG, stroke_opacity=0.6, dash_length=0.12,
         )
         split_label = Text("τ_split", color=FG).scale(0.45)
         split_label.next_to(axes.c2p(tau_split, -2.2), DOWN, buff=0.15)
-        self.play(Create(split_line), FadeIn(split_label), run_time=0.6)
-        self.wait(0.3)
 
-        # --- Phase C: split both curves at τ_split --- #
         b1_left_ys, b1_right_ys = de_casteljau_split(b1_ys, tau_split)
         b2_left_ys, b2_right_ys = de_casteljau_split(b2_ys, tau_split)
+        self.b1_left_ys, self.b1_right_ys = b1_left_ys, b1_right_ys
+        self.b2_left_ys, self.b2_right_ys = b2_left_ys, b2_right_ys
 
-        # Build split-half mobjects
         b1_left_dots, b1_left_poly = _control_points_mobject(
             axes, b1_left_ys, 0.0, tau_split, B1_COLOR)
         b1_right_dots, b1_right_poly = _control_points_mobject(
@@ -235,187 +233,340 @@ class BezierTransition(Scene):
         b2_left_curve = _curve_mobject(axes, b2_left_ys, 0.0, tau_split, B2_COLOR)
         b2_right_curve = _curve_mobject(axes, b2_right_ys, tau_split, 1.0, B2_COLOR)
 
-        # Replace original curves/CPs with split versions.
-        self.play(
-            FadeOut(b1_curve), FadeOut(b2_curve),
-            FadeOut(b1_poly), FadeOut(b2_poly),
-            FadeOut(b1_dots), FadeOut(b2_dots),
-            FadeOut(b1_cp_labels), FadeOut(b2_cp_labels),
-            FadeIn(b1_left_curve), FadeIn(b1_right_curve),
-            FadeIn(b2_left_curve), FadeIn(b2_right_curve),
-            FadeIn(b1_left_poly), FadeIn(b1_right_poly),
-            FadeIn(b2_left_poly), FadeIn(b2_right_poly),
-            FadeIn(b1_left_dots), FadeIn(b1_right_dots),
-            FadeIn(b2_left_dots), FadeIn(b2_right_dots),
-            run_time=1.0,
-        )
-        self.wait(0.6)
-
-        # Labels for the pre-split halves: α̂. Appear AFTER the split has
-        # visibly settled.
         b1_right_labels = _cp_labels(axes, b1_right_ys, tau_split, 1.0,
                                      subscript=1, hat=True,
                                      color=B1_COLOR, direction=DOWN)
         b2_right_labels = _cp_labels(axes, b2_right_ys, tau_split, 1.0,
                                      subscript=2, hat=True,
                                      color=B2_COLOR, direction=UP)
-        self.play(FadeIn(b1_right_labels), run_time=0.5)
-        self.play(FadeIn(b2_right_labels), run_time=0.5)
-        self.wait(0.4)
 
-        # --- Phase D: build transition Bezier --- #
         trans_ys = interpolate_transition(b1_right_ys, b2_right_ys, deg=3)
+        self.trans_ys = trans_ys
         trans_dots, trans_poly = _control_points_mobject(
             axes, trans_ys, tau_split, 1.0, TRANS_COLOR)
         trans_curve = _curve_mobject(axes, trans_ys, tau_split, 1.0, TRANS_COLOR)
-
         trans_label = Text("transition", color=TRANS_COLOR).scale(0.45)
         trans_label.next_to(axes.c2p(tau_split, 2.2), UP, buff=0.1)
-
-        self.play(FadeIn(trans_poly), FadeIn(trans_dots),
-                  FadeIn(trans_label), run_time=0.8)
-        self.wait(0.2)
-        self.play(Create(trans_curve), run_time=1.2)
-        self.wait(0.6)
-
-        # --- Phase E: drop the scaffolding polygons/dots and α̂ labels
-        # instantly (so they don't visibly linger during any fade), then dim
-        # the remaining scaffolding curves so they're still faintly visible.
-        #
-        # IMPORTANT: use set_stroke(opacity=...) on the curves rather than
-        # set_opacity(...). ParametricFunction is a VMobject with a fill path
-        # (implicitly closing to the origin). set_opacity() drops fill_opacity
-        # to 0.2 too, which renders as a translucent "shaded region" under the
-        # curve — not what we want. --- #
-        self.remove(
-            b1_right_poly, b1_right_dots,
-            b2_left_poly, b2_left_dots,
-            b2_right_poly, b2_right_dots,
-            b1_right_labels, b2_right_labels,
-        )
-        dim_curves = VGroup(b1_right_curve, b2_left_curve, b2_right_curve)
-        self.play(
-            dim_curves.animate.set_stroke(opacity=0.2),
-            b2_label.animate.set_opacity(0.2),
-            run_time=1.0,
-        )
-        self.wait(0.3)
-
         trans_labels = _cp_labels(
             axes, trans_ys, tau_split, 1.0,
             subscript="₁→₂", hat=False,
             color=TRANS_COLOR, direction=UP,
         )
-        self.play(FadeIn(trans_labels), run_time=0.6)
-        self.wait(1.0)
 
-        # --- Phase F: sweep τ_split back and forth, demonstrating the
-        # transition stays smooth for a wide range of split points. --- #
-        tracker = ValueTracker(tau_split)
+        # Stash everything on self.
+        for k, v in dict(
+            axes=axes, x_label=x_label, y_label=y_label,
+            b1_dots=b1_dots, b1_poly=b1_poly, b1_curve=b1_curve,
+            b2_dots=b2_dots, b2_poly=b2_poly, b2_curve=b2_curve,
+            b1_label=b1_label, b2_label=b2_label,
+            b1_cp_labels=b1_cp_labels, b2_cp_labels=b2_cp_labels,
+            split_line=split_line, split_label=split_label,
+            b1_left_dots=b1_left_dots, b1_left_poly=b1_left_poly,
+            b1_left_curve=b1_left_curve,
+            b1_right_dots=b1_right_dots, b1_right_poly=b1_right_poly,
+            b1_right_curve=b1_right_curve,
+            b2_left_dots=b2_left_dots, b2_left_poly=b2_left_poly,
+            b2_left_curve=b2_left_curve,
+            b2_right_dots=b2_right_dots, b2_right_poly=b2_right_poly,
+            b2_right_curve=b2_right_curve,
+            b1_right_labels=b1_right_labels,
+            b2_right_labels=b2_right_labels,
+            trans_dots=trans_dots, trans_poly=trans_poly,
+            trans_curve=trans_curve, trans_label=trans_label,
+            trans_labels=trans_labels,
+        ).items():
+            setattr(self, k, v)
 
-        def _dyn_split_line() -> DashedLine:
-            s = tracker.get_value()
-            return DashedLine(
-                axes.c2p(s, -2.2), axes.c2p(s, 2.2),
-                color=FG, stroke_opacity=0.6, dash_length=0.12,
-            )
+    # Each `add_end_of_*` installs (without animation) the visual state at
+    # the end of the named phase, so the next phase's video begins exactly
+    # where the previous one finished.
 
-        def _dyn_split_label() -> Text:
-            s = tracker.get_value()
-            t = Text("τ_split", color=FG).scale(0.45)
-            t.next_to(axes.c2p(s, -2.2), DOWN, buff=0.15)
-            return t
+    def add_axes(self):
+        self.add(self.axes, self.x_label, self.y_label)
 
-        def _dyn_b1_left() -> ParametricFunction:
-            s = tracker.get_value()
-            left_ys, _ = de_casteljau_split(b1_ys, s)
-            return _curve_mobject(axes, left_ys, 0.0, s, B1_COLOR)
+    def add_end_of_a(self):
+        self.add_axes()
+        self.add(self.b1_poly, self.b1_dots, self.b1_curve,
+                 self.b2_poly, self.b2_dots, self.b2_curve,
+                 self.b1_label, self.b2_label,
+                 self.b1_cp_labels, self.b2_cp_labels)
 
-        def _dyn_dim_curve(full_ys: np.ndarray, color: ManimColor,
-                           side: str) -> ParametricFunction:
-            """side: 'left' or 'right'."""
-            s = tracker.get_value()
-            left_ys, right_ys = de_casteljau_split(full_ys, s)
-            if side == "left":
-                c = _curve_mobject(axes, left_ys, 0.0, s, color)
-            else:
-                c = _curve_mobject(axes, right_ys, s, 1.0, color)
-            c.set_stroke(opacity=0.2)
-            return c
+    def add_end_of_b(self):
+        self.add_end_of_a()
+        self.add(self.split_line, self.split_label)
 
-        def _trans_ys_now() -> np.ndarray:
-            s = tracker.get_value()
-            _, b1_r = de_casteljau_split(b1_ys, s)
-            _, b2_r = de_casteljau_split(b2_ys, s)
-            return interpolate_transition(b1_r, b2_r, deg=3)
+    def add_end_of_c(self):
+        self.add_axes()
+        self.add(self.split_line, self.split_label,
+                 self.b1_label, self.b2_label,
+                 self.b1_left_curve, self.b1_left_poly, self.b1_left_dots,
+                 self.b1_right_curve, self.b1_right_poly, self.b1_right_dots,
+                 self.b2_left_curve, self.b2_left_poly, self.b2_left_dots,
+                 self.b2_right_curve, self.b2_right_poly, self.b2_right_dots,
+                 self.b1_right_labels, self.b2_right_labels)
 
-        def _dyn_trans_curve() -> ParametricFunction:
-            s = tracker.get_value()
-            return _curve_mobject(axes, _trans_ys_now(), s, 1.0, TRANS_COLOR)
+    def add_end_of_d(self):
+        self.add_end_of_c()
+        self.add(self.trans_poly, self.trans_dots, self.trans_curve,
+                 self.trans_label)
 
-        def _dyn_trans_dots() -> VGroup:
-            s = tracker.get_value()
-            dots, _poly = _control_points_mobject(
-                axes, _trans_ys_now(), s, 1.0, TRANS_COLOR)
-            return dots
+    def add_end_of_e(self):
+        # End of E: scaffolding polys/dots and α̂ labels are gone; the
+        # non-trajectory half-curves and B₂ label are dimmed.
+        self.b1_right_curve.set_stroke(opacity=0.2)
+        self.b2_left_curve.set_stroke(opacity=0.2)
+        self.b2_right_curve.set_stroke(opacity=0.2)
+        self.b2_label.set_opacity(0.2)
+        self.add_axes()
+        self.add(self.split_line, self.split_label,
+                 self.b1_label, self.b2_label,
+                 self.b1_left_curve, self.b1_left_poly, self.b1_left_dots,
+                 self.b1_right_curve,
+                 self.b2_left_curve, self.b2_right_curve,
+                 self.trans_poly, self.trans_dots, self.trans_curve,
+                 self.trans_label, self.trans_labels)
 
-        def _dyn_trans_poly() -> VGroup:
-            s = tracker.get_value()
-            _dots, poly = _control_points_mobject(
-                axes, _trans_ys_now(), s, 1.0, TRANS_COLOR)
-            return poly
 
-        def _dyn_trans_label() -> Text:
-            s = tracker.get_value()
-            t = Text("transition", color=TRANS_COLOR).scale(0.45)
-            t.next_to(axes.c2p(s, 2.2), UP, buff=0.1)
-            return t
+# ---------- monolithic scene (renders the whole thing in one MP4) ---------- #
 
-        def _dyn_trans_labels() -> VGroup:
-            s = tracker.get_value()
-            return _cp_labels(
-                axes, _trans_ys_now(), s, 1.0,
-                subscript="₁→₂", hat=False,
-                color=TRANS_COLOR, direction=UP,
-            )
+class BezierTransition(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_axes()
 
-        # Swap static → dynamic. Remove first so nothing double-renders.
-        self.remove(
-            split_line, split_label,
-            b1_left_curve,
-            b1_right_curve, b2_left_curve, b2_right_curve,
-            trans_curve, trans_poly, trans_dots,
-            trans_label, trans_labels,
+        _play_phase_a(self)
+        _play_phase_b(self)
+        _play_phase_c(self)
+        _play_phase_d(self)
+        _play_phase_e(self)
+        _play_phase_f(self)
+
+
+# ---------- per-phase animation helpers ---------- #
+#
+# These are module-level so both the monolithic `BezierTransition` scene
+# and the per-phase scenes below run the exact same animations.
+
+
+def _play_phase_a(s: "_BezierWorld"):
+    s.play(FadeIn(s.b1_poly), FadeIn(s.b1_dots),
+           FadeIn(s.b2_poly), FadeIn(s.b2_dots), run_time=0.6)
+    s.play(Create(s.b1_curve), Create(s.b2_curve), run_time=1.0)
+    s.play(FadeIn(s.b1_label), FadeIn(s.b2_label), run_time=0.3)
+    s.play(FadeIn(s.b1_cp_labels), FadeIn(s.b2_cp_labels), run_time=0.6)
+    s.wait(0.4)
+
+
+def _play_phase_b(s: "_BezierWorld"):
+    s.play(Create(s.split_line), FadeIn(s.split_label), run_time=0.6)
+    s.wait(0.3)
+
+
+def _play_phase_c(s: "_BezierWorld"):
+    s.play(
+        FadeOut(s.b1_curve), FadeOut(s.b2_curve),
+        FadeOut(s.b1_poly), FadeOut(s.b2_poly),
+        FadeOut(s.b1_dots), FadeOut(s.b2_dots),
+        FadeOut(s.b1_cp_labels), FadeOut(s.b2_cp_labels),
+        FadeIn(s.b1_left_curve), FadeIn(s.b1_right_curve),
+        FadeIn(s.b2_left_curve), FadeIn(s.b2_right_curve),
+        FadeIn(s.b1_left_poly), FadeIn(s.b1_right_poly),
+        FadeIn(s.b2_left_poly), FadeIn(s.b2_right_poly),
+        FadeIn(s.b1_left_dots), FadeIn(s.b1_right_dots),
+        FadeIn(s.b2_left_dots), FadeIn(s.b2_right_dots),
+        run_time=1.0,
+    )
+    s.wait(0.6)
+    s.play(FadeIn(s.b1_right_labels), run_time=0.5)
+    s.play(FadeIn(s.b2_right_labels), run_time=0.5)
+    s.wait(0.4)
+
+
+def _play_phase_d(s: "_BezierWorld"):
+    s.play(FadeIn(s.trans_poly), FadeIn(s.trans_dots),
+           FadeIn(s.trans_label), run_time=0.8)
+    s.wait(0.2)
+    s.play(Create(s.trans_curve), run_time=1.2)
+    s.wait(0.6)
+
+
+def _play_phase_e(s: "_BezierWorld"):
+    # Drop scaffolding polys/dots and α̂ labels instantly.
+    #
+    # IMPORTANT: use set_stroke(opacity=...) on ParametricFunction, not
+    # set_opacity(...) — the latter also drops fill_opacity and renders a
+    # translucent "shaded region" under the curve.
+    s.remove(
+        s.b1_right_poly, s.b1_right_dots,
+        s.b2_left_poly, s.b2_left_dots,
+        s.b2_right_poly, s.b2_right_dots,
+        s.b1_right_labels, s.b2_right_labels,
+    )
+    dim_curves = VGroup(s.b1_right_curve, s.b2_left_curve, s.b2_right_curve)
+    s.play(
+        dim_curves.animate.set_stroke(opacity=0.2),
+        s.b2_label.animate.set_opacity(0.2),
+        run_time=1.0,
+    )
+    s.wait(0.3)
+    s.play(FadeIn(s.trans_labels), run_time=0.6)
+    s.wait(1.0)
+
+
+def _play_phase_f(s: "_BezierWorld"):
+    axes = s.axes
+    b1_ys, b2_ys, tau_split = s.b1_ys, s.b2_ys, s.tau_split
+    tracker = ValueTracker(tau_split)
+
+    def _dyn_split_line() -> DashedLine:
+        u = tracker.get_value()
+        return DashedLine(
+            axes.c2p(u, -2.2), axes.c2p(u, 2.2),
+            color=FG, stroke_opacity=0.6, dash_length=0.12,
         )
 
-        dyn_split_line = always_redraw(_dyn_split_line)
-        dyn_split_label = always_redraw(_dyn_split_label)
-        dyn_b1_left = always_redraw(_dyn_b1_left)
-        dyn_b1_right = always_redraw(
-            lambda: _dyn_dim_curve(b1_ys, B1_COLOR, "right"))
-        dyn_b2_left = always_redraw(
-            lambda: _dyn_dim_curve(b2_ys, B2_COLOR, "left"))
-        dyn_b2_right = always_redraw(
-            lambda: _dyn_dim_curve(b2_ys, B2_COLOR, "right"))
-        dyn_trans_curve = always_redraw(_dyn_trans_curve)
-        dyn_trans_poly = always_redraw(_dyn_trans_poly)
-        dyn_trans_dots = always_redraw(_dyn_trans_dots)
-        dyn_trans_label = always_redraw(_dyn_trans_label)
-        dyn_trans_labels = always_redraw(_dyn_trans_labels)
+    def _dyn_split_label() -> Text:
+        u = tracker.get_value()
+        t = Text("τ_split", color=FG).scale(0.45)
+        t.next_to(axes.c2p(u, -2.2), DOWN, buff=0.15)
+        return t
 
-        self.add(
-            dyn_split_line, dyn_split_label,
-            dyn_b1_right, dyn_b2_left, dyn_b2_right,
-            dyn_b1_left,
-            dyn_trans_poly, dyn_trans_dots, dyn_trans_curve,
-            dyn_trans_label, dyn_trans_labels,
+    def _dyn_b1_left() -> ParametricFunction:
+        u = tracker.get_value()
+        left_ys, _ = de_casteljau_split(b1_ys, u)
+        return _curve_mobject(axes, left_ys, 0.0, u, B1_COLOR)
+
+    def _dyn_dim_curve(full_ys: np.ndarray, color: ManimColor,
+                       side: str) -> ParametricFunction:
+        u = tracker.get_value()
+        left_ys, right_ys = de_casteljau_split(full_ys, u)
+        if side == "left":
+            c = _curve_mobject(axes, left_ys, 0.0, u, color)
+        else:
+            c = _curve_mobject(axes, right_ys, u, 1.0, color)
+        c.set_stroke(opacity=0.2)
+        return c
+
+    def _trans_ys_now() -> np.ndarray:
+        u = tracker.get_value()
+        _, b1_r = de_casteljau_split(b1_ys, u)
+        _, b2_r = de_casteljau_split(b2_ys, u)
+        return interpolate_transition(b1_r, b2_r, deg=3)
+
+    def _dyn_trans_curve() -> ParametricFunction:
+        u = tracker.get_value()
+        return _curve_mobject(axes, _trans_ys_now(), u, 1.0, TRANS_COLOR)
+
+    def _dyn_trans_dots() -> VGroup:
+        u = tracker.get_value()
+        dots, _poly = _control_points_mobject(
+            axes, _trans_ys_now(), u, 1.0, TRANS_COLOR)
+        return dots
+
+    def _dyn_trans_poly() -> VGroup:
+        u = tracker.get_value()
+        _dots, poly = _control_points_mobject(
+            axes, _trans_ys_now(), u, 1.0, TRANS_COLOR)
+        return poly
+
+    def _dyn_trans_label() -> Text:
+        u = tracker.get_value()
+        t = Text("transition", color=TRANS_COLOR).scale(0.45)
+        t.next_to(axes.c2p(u, 2.2), UP, buff=0.1)
+        return t
+
+    def _dyn_trans_labels() -> VGroup:
+        u = tracker.get_value()
+        return _cp_labels(
+            axes, _trans_ys_now(), u, 1.0,
+            subscript="₁→₂", hat=False,
+            color=TRANS_COLOR, direction=UP,
         )
 
-        # Clamp away from degenerate endpoints so the de Casteljau splits
-        # stay well-conditioned and the CP labels don't overlap too badly.
-        self.play(tracker.animate.set_value(0.20), run_time=2.5)
-        self.wait(0.4)
-        self.play(tracker.animate.set_value(0.75), run_time=3.0)
-        self.wait(0.4)
-        self.play(tracker.animate.set_value(0.45), run_time=2.0)
-        self.wait(1.0)
+    s.remove(
+        s.split_line, s.split_label,
+        s.b1_left_curve,
+        s.b1_right_curve, s.b2_left_curve, s.b2_right_curve,
+        s.trans_curve, s.trans_poly, s.trans_dots,
+        s.trans_label, s.trans_labels,
+    )
+
+    dyn_split_line = always_redraw(_dyn_split_line)
+    dyn_split_label = always_redraw(_dyn_split_label)
+    dyn_b1_left = always_redraw(_dyn_b1_left)
+    dyn_b1_right = always_redraw(
+        lambda: _dyn_dim_curve(b1_ys, B1_COLOR, "right"))
+    dyn_b2_left = always_redraw(
+        lambda: _dyn_dim_curve(b2_ys, B2_COLOR, "left"))
+    dyn_b2_right = always_redraw(
+        lambda: _dyn_dim_curve(b2_ys, B2_COLOR, "right"))
+    dyn_trans_curve = always_redraw(_dyn_trans_curve)
+    dyn_trans_poly = always_redraw(_dyn_trans_poly)
+    dyn_trans_dots = always_redraw(_dyn_trans_dots)
+    dyn_trans_label = always_redraw(_dyn_trans_label)
+    dyn_trans_labels = always_redraw(_dyn_trans_labels)
+
+    s.add(
+        dyn_split_line, dyn_split_label,
+        dyn_b1_right, dyn_b2_left, dyn_b2_right,
+        dyn_b1_left,
+        dyn_trans_poly, dyn_trans_dots, dyn_trans_curve,
+        dyn_trans_label, dyn_trans_labels,
+    )
+
+    # Clamp away from degenerate endpoints so de Casteljau stays
+    # well-conditioned and labels don't overlap.
+    s.play(tracker.animate.set_value(0.20), run_time=2.5)
+    s.wait(0.4)
+    s.play(tracker.animate.set_value(0.75), run_time=3.0)
+    s.wait(0.4)
+    s.play(tracker.animate.set_value(0.45), run_time=2.0)
+    s.wait(1.0)
+
+
+# ---------- per-phase scenes (each renders a separate MP4) ---------- #
+#
+# Used as reveal.js fragments in `presentation/slides/gaitlib.qmd`.
+# Each scene's first frame matches the previous scene's last frame.
+
+
+class BezierPhaseA(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_axes()
+        _play_phase_a(self)
+
+
+class BezierPhaseB(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_end_of_a()
+        _play_phase_b(self)
+
+
+class BezierPhaseC(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_end_of_b()
+        _play_phase_c(self)
+
+
+class BezierPhaseD(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_end_of_c()
+        _play_phase_d(self)
+
+
+class BezierPhaseE(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_end_of_d()
+        _play_phase_e(self)
+
+
+class BezierPhaseF(_BezierWorld, Scene):
+    def construct(self):
+        self.setup_world()
+        self.add_end_of_e()
+        _play_phase_f(self)

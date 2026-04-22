@@ -1,4 +1,16 @@
 ## Gait Libraries: Blending and Interpolating
 <!-- 1. How are gaits transitioned between? -->
 
-<video src="../media/BezierTransition.mp4" data-autoplay muted style="display: block; margin: 0 auto; max-width: 100%;"></video>
+<!-- Six phase videos stacked on top of each other. Each is wrapped in a
+     reveal.js `.fragment` div so arrow-right reveals it and
+     `startEmbeddedMedia` (which does `queryAll(fragmentEl, 'video')`)
+     autoplays the inner video. Each phase's first frame matches the
+     previous phase's last frame, so transitions look seamless. -->
+<div class="r-stack" style="margin: 0 auto; max-width: 100%;">
+<div class="fragment" data-fragment-index="0"><video src="../media/BezierPhaseA.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
+<div class="fragment" data-fragment-index="1"><video src="../media/BezierPhaseB.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
+<div class="fragment" data-fragment-index="2"><video src="../media/BezierPhaseC.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
+<div class="fragment" data-fragment-index="3"><video src="../media/BezierPhaseD.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
+<div class="fragment" data-fragment-index="4"><video src="../media/BezierPhaseE.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
+<div class="fragment" data-fragment-index="5"><video src="../media/BezierPhaseF.mp4" data-autoplay muted playsinline style="max-width: 100%;"></video></div>
+</div>

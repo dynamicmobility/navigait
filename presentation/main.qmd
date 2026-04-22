@@ -30,9 +30,7 @@ format:
 
 {{< include slides/gaitlib.qmd >}}
 
-## Residual RL: Adapting to Disturbance
-1. How is the RL trained? What is its objective?
-2. joint correction vs velocity correction
+{{< include slides/residual_rl.qmd >}}
 
 ## BRUCE Humanoid Robot
 1. What is this robot? Are there any peculiarities?
