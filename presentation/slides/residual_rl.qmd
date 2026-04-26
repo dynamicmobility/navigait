@@ -1,6 +1,6 @@
 ## Residual RL: Adapting to Disturbance {.nav-approach}
 
-![](../media/framework_rl.svg){.absolute top=-30 right=-130 width="35%" style="z-index: 10;"}
+![](../media/framework_rl.svg){.absolute top=-30 right=-60 width="30%" style="z-index: 10;"}
 
 We utilize RL to concurrently achieve two objectives:
 

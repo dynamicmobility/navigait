@@ -1,6 +1,6 @@
 ## BRUCE Humanoid Robot {.nav-approach}
 
-![](../media/framework_bruce.svg){.absolute top=-30 right=-130 width="35%" style="z-index: 10;"}
+![](../media/framework_bruce.svg){.absolute top=-30 right=-60 width="30%" style="z-index: 10;"}
 
 
 :::: {.columns}
