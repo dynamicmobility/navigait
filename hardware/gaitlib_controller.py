@@ -5,9 +5,10 @@ from externals.roboprotobuf.protoutil.control_server import ControlServer
 from externals.roboprotobuf.protoutil.robotproto.bruce_pb2 import BruceControllerEvent, BruceEvent
 from externals.roboprotobuf.protoutil.robotproto.pack_data import pack_numpy_array
 from kinodynamo import CubicSpline
-from control.gait import GaitLibrary, Leg
+from control.gait import GaitLibrary, Leg, cpu_cond
 from scipy.special import factorial
 from pathlib import Path
+from envs.bruce import interface_westwood as bruce
 
 
 NDOF = 16
@@ -43,6 +44,12 @@ def main():
         swing_leg     = Leg.LEFT,
         gait_type     = 'P2'
     )
+    # cmd = gl.evaluate(0.0, gl.swing_leg)
+    # print(repr(gl.ff_evaluate(0.0)))
+    # print()
+    # print(repr(bruce.crank2pitch(np, cmd[:10])))
+    # print(repr(bruce.crank2pitch(np, cmd[10:])))
+    # quit()
     
     # Start up server for accepting remote state data
     server = ControlServer(
@@ -59,19 +66,23 @@ def main():
     PRINT_FREQ = 100
     state_msg: BruceEvent = server.handle_request()
     start_pos = np.array(state_msg.proprioception.qpos.data)[FREE3D_POS:].copy()
-    
+    leg = Leg.LEFT
+
     while True:
         time_start = time.perf_counter()
 
         # Evaluate the gait library
-        s = gl.get_phase(time_start)
-        cmd = gl.evaluate(s, Leg.LEFT)
+        s = gl.get_phase(state_msg.time)
+        if s >= 1.0:
+            gl = gl.impact_reset(state_msg.time, cpu_cond)
+            s = gl.get_phase(state_msg.time)
+        cmd = gl.evaluate(s, gl.swing_leg)
 
         # Send commands to the robot
         output_msg = pack_control(
             time     = state_msg.time, 
-            qpos_des = np.hstack([cmd[:10], np.zeros(6)]),
-            qvel_des = np.hstack([cmd[10:], np.zeros(6)]),
+            qpos_des = np.hstack([bruce.crank2pitch(np, cmd[:10]), np.zeros(6)]),
+            qvel_des = np.hstack([bruce.crank2pitch(np, cmd[10:]), np.zeros(6)]),
         )
         server.send_control(output_msg)
 

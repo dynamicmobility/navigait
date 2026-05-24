@@ -11,7 +11,7 @@ np.set_printoptions(linewidth=300)
 from mujoco_playground._src import mjx_env
 from mujoco import mjx
 
-from envs.bruce import interface4bar as bruce
+from envs.bruce import interface_westwood as bruce
 # from envs.bruce import interfacedirect as bruce
 from envs.generic.navigait import NaviGait
 from control.bezier import Leg
@@ -30,21 +30,24 @@ class Bruce(NaviGait):
         gait_type='P2',
         backend='jnp',
         idealistic=False,
-        animate=False
+        animate=False,
+        angular_tracking=False
     ):  
         # Initialize the parent class
         super().__init__(
-            xml_path          = bruce.PD_XML,
+            xml_path          = bruce.OFFICIAL_XML,
             env_params        = env_params,
             num_states        = bruce.NDOF,
             backend           = backend,
             gait_type         = gait_type,
             gaitlib_path      = gaitlib_path,
-            animate           = animate
+            animate           = animate,
+            angular_tracking  = angular_tracking
         )
         if idealistic:
             self.params.domain_randomization.enabled = False
             self.params.domain_randomization.obs_delay.enabled = False
+            self.params.domain_randomization.action_delay.enabled = False
             self.params.noise_scale = 0.0
             self.params.curriculum.enabled = False
             self.params.start_stance = 'left'
@@ -65,12 +68,12 @@ class Bruce(NaviGait):
         num_resets: int = 0,
     ):
         
-        rng, gaitlib, global_hzd_qpos, global_hzd_qvel = self.initialization_randomization(
+        rng, gaitlib, w_cmd, global_hzd_qpos, global_hzd_qvel = self.initialization_randomization(
             rng          = rng, 
             default_qpos = self._np.hstack([bruce.DEFAULT_FF, bruce.DEFAULT_JT]),
             ndof         = bruce.NDOF
         )
-        
+
         rng, ff_key, jt_key = self._split(rng, 3)
         if self.params.initialization.add_random_yaw:
             global_hzd_qpos = self.add_random_ff(ff_key, global_hzd_qpos)
@@ -94,8 +97,9 @@ class Bruce(NaviGait):
         parent_state = super().reset(
             rng                = rng, 
             gaitlib            = gaitlib,
-            global_qpos        = bruce.ext_crank2ext_full(self._np, global_hzd_qpos, geo.FREE3D_POS),
-            global_qvel        = bruce.ext_crank2ext_full(self._np, global_hzd_qvel, geo.FREE3D_VEL),
+            w_cmd              = w_cmd,
+            global_qpos        = bruce.ext(self._np, bruce.crank2full, global_hzd_qpos, geo.FREE3D_POS),
+            global_qvel        = bruce.ext(self._np, bruce.crank2full, global_hzd_qvel, geo.FREE3D_VEL),
             ctrl               = motor_targets_linkage,
             ndof               = bruce.NDOF,
             torso_id           = bruce.TORSO_ID,
@@ -108,6 +112,7 @@ class Bruce(NaviGait):
             parent_state.data,
             curr_level=self.get_curriculum_level(parent_state.info)
         )
+        
 
         his_len = self.params.history_length
         obs_delay = self.params.domain_randomization.obs_delay
@@ -121,7 +126,21 @@ class Bruce(NaviGait):
             gyro_history_len  = his_len + obs_delay.gyro[1] + 1,
             accel_history_len = his_len + obs_delay.accel[1] + 1,
         )
-        parent_state.info['rng'], key = self._split(parent_state.info['rng'])
+        updated_info['rng'], key = self._split(parent_state.info['rng'])
+        obs_delay = self.params.domain_randomization.obs_delay
+        observation_delay = self._np.round(self._uniform(
+            key,
+            minval=obs_delay.gyro[0],
+            maxval=obs_delay.gyro[1]
+        )).astype(self._np.int32)
+        updated_info['rng'], key = self._split(parent_state.info['rng'])
+        action_delay = self._np.round(self._uniform(
+            key,
+            minval=self.params.domain_randomization.action_delay.val[0],
+            maxval=self.params.domain_randomization.action_delay.val[1]
+        )).astype(self._np.int32)
+        updated_info['obs_delay'] = observation_delay * self._np.array(obs_delay.enabled).astype(self._np.int32)
+        updated_info['act_delay'] = action_delay * self._np.array(self.params.domain_randomization.action_delay.enabled).astype(self._np.int32)
         
         obs = self._get_obs(
             time        = parent_state.data.time,
@@ -181,7 +200,8 @@ class Bruce(NaviGait):
         global_hzd_qpos: np.ndarray,
         gyro: np.ndarray,
         accel: np.ndarray,
-        random_seed: int
+        random_seed: int,
+        policy
     ):
         rng = jax.random.PRNGKey(random_seed)
         gaitlib = self.set_gaitlib(
@@ -204,7 +224,7 @@ class Bruce(NaviGait):
         parent_state = super().reset(
             rng          = rng, 
             gaitlib      = gaitlib,
-            global_qpos  = bruce.ext_crank2ext_full(self._np, global_hzd_qpos, geo.FREE3D_POS),
+            global_qpos  = bruce.ext(self._np, bruce.crank2full, global_hzd_qpos, geo.FREE3D_POS),
             global_qvel  = mj_qvel,
             ctrl         = initial_ctrl,
             ndof         = bruce.NDOF,
@@ -226,16 +246,19 @@ class Bruce(NaviGait):
             gyro_history_len  = his_len + obs_delay.gyro[1] + 1,
             accel_history_len = his_len + obs_delay.accel[1] + 1
         )
+        updated_info['obs_delay'] = 0
+        updated_info['act_delay'] = 0
 
         initial_obs = self._get_obs(
             time         = parent_state.data.time,
             info         = updated_info,
             ndof         = bruce.NDOF
         )
+        self.policy = policy
 
         updated_info['jt_offset'] = self._np.zeros(bruce.NDOF)
-        updated_info['jt_offset'][4] = self.params.ankle_offsets[0]
-        updated_info['jt_offset'][9] = self.params.ankle_offsets[1]
+        # updated_info['jt_offset'][4] = self.params.ankle_offsets[0]
+        # updated_info['jt_offset'][9] = self.params.ankle_offsets[1]
         initial_info = updated_info
 
         return initial_obs, initial_info        
@@ -249,18 +272,21 @@ class Bruce(NaviGait):
 
         # Pre-process the action to get the motor targets
         res_jt = res_action[:bruce.NDOF]
-        res_vel = res_action[bruce.NDOF:]
+        res_vel = res_action[bruce.NDOF:bruce.NDOF+2]
+        recurrent_states = res_action[bruce.NDOF+2:]
         motor_targets, info = self.pre_process_action(
-            time       = state.data.time,
-            info       = state.info,
-            res_joints = res_jt,
-            res_vel    = res_vel,
-            ndof       = bruce.NDOF
+            time             = state.data.time,
+            info             = state.info,
+            res_joints       = res_jt,
+            res_vel          = res_vel,
+            recurrent_states = recurrent_states,
+            ndof             = bruce.NDOF
         )
-        motor_targets_linkage = self._np.hstack((
-            motor_targets[0:bruce.NDOF],
-            motor_targets[bruce.NDOF:]
-        ))
+        # motor_targets = self._splice(info['motor_target_history'], (info['act_delay'], 0), (1, bruce.NDOF*2)).flatten()
+        motor_targets_linkage = self._np.hstack([
+            bruce.crank2bear(self._np, motor_targets[:bruce.NDOF]),
+            bruce.crank2bear(self._np, motor_targets[bruce.NDOF:])
+        ])
         # Step the simulation
         data = self._step_fn(state.data, motor_targets_linkage, model=rand_model)
         
@@ -283,8 +309,8 @@ class Bruce(NaviGait):
         # Update the internal state of the environment
         updated_info = self.update_internal_state(
             time                  = data.time,
-            qpos                  = bruce.ext_full_2ext_crank(self._np, data.qpos, geo.FREE3D_POS),
-            qvel                  = bruce.ext_full_2ext_crank(self._np, data.qvel, geo.FREE3D_VEL),
+            qpos                  = bruce.ext(self._np, bruce.full2crank, data.qpos, geo.FREE3D_POS),
+            qvel                  = bruce.ext(self._np, bruce.full2crank, data.qvel, geo.FREE3D_VEL),
             info                  = info,
             res_joints            = res_jt,
             right_ground_contact  = False,
@@ -329,7 +355,7 @@ class Bruce(NaviGait):
     
     @property
     def action_size(self) -> int:
-        return bruce.NDOF + 2
+        return bruce.NDOF + 2 + self.params.recurrent_states
     
     def get_ctrl(
         self,
@@ -339,7 +365,6 @@ class Bruce(NaviGait):
         info: dict[str | np.ndarray],
         gyro: np.ndarray,
         accel: np.ndarray,
-        policy
     ) -> jax.Array:
         """Returns the control signal for the environment."""
         
@@ -368,18 +393,18 @@ class Bruce(NaviGait):
         )
 
         # Run an inference and preprocess the outputs
-        res, _      = policy(obs, None)
-        res_joints  = self._np.array(res[:bruce.NDOF])
-        res_vel     = self._np.array(res[bruce.NDOF:])
-        # res_joints = self._np.zeros(bruce.NDOF)
-        # res_vel = self._np.zeros(2)
+        res, _              = self.policy(obs, None)
+        res_joints          = self._np.array(res[:bruce.NDOF])
+        res_vel             = self._np.array(res[bruce.NDOF:bruce.NDOF+2])
+        recurrent_states    = self._np.array(res[bruce.NDOF+2:])
         
         motor_targets, updated_info = self.pre_process_action(
-            time       = time,
-            info       = updated_info,
-            res_joints = res_joints,
-            res_vel    = res_vel,
-            ndof       = bruce.NDOF
+            time                = time,
+            info                = updated_info,
+            res_joints          = res_joints,
+            res_vel             = res_vel,
+            ndof                = bruce.NDOF,
+            recurrent_states    = recurrent_states
         )
 
         return motor_targets, updated_info.copy()
@@ -394,8 +419,9 @@ class Bruce(NaviGait):
         sigmas = self.params.reward.sigmas
         base_des = info['base_history'][1]
         gait_des = info['gait_history'][1]
-        global_qpos_act = bruce.ext_full_2ext_crank(
+        global_qpos_act = bruce.ext(
             self._np,
+            bruce.full2crank,
             data.qpos,
             geo.FREE3D_POS
         )
@@ -412,6 +438,15 @@ class Bruce(NaviGait):
             self._np,
             base_des,
             info['transform_init']
+        )
+        ground_contact = bruce.get_ground_contact(
+            self._np, 
+            bruce.get_raw_contacts(
+                self._np,
+                self.mj_model,
+                data,
+                threshold=bruce.CONTACT_THRESHOLD
+            )
         )
         rewards = {
             'gait_tracking' : self.reward_euclidean_imitation(
@@ -456,18 +491,17 @@ class Bruce(NaviGait):
                 last_last_act = self._jt_scale * info['act_history'][2, :bruce.NDOF],
             ),
             'foot_contact': self.reward_foot_contact(
-                ground_contact  = bruce.get_ground_contact(
-                                    self._np, 
-                                    bruce.get_raw_contacts(
-                                        self._np,
-                                        self.mj_model,
-                                        data,
-                                        threshold=bruce.CONTACT_THRESHOLD
-                                    )
-                                ),
+                ground_contact  = ground_contact,
                 swing_foot      = info['gaitlib'].swing_leg
             ),
-                
+            'foot_impact': self.cost_impact_velocity(
+                ground_contact = ground_contact,
+                foot_velocity  = bruce.get_foot_vel(
+                    self._np,
+                    self.mj_model,
+                    data
+                )
+            ),
             'alive': self.reward_alive(),
             'global_xy_tracking': self.reward_euclidean_imitation(
                 qpos            = global_qpos_act[:3],
@@ -497,3 +531,11 @@ class Bruce(NaviGait):
         contact_reward = self._np.sum(feet_des == ground_contact.astype(self._np.float32))
         
         return contact_reward / 2.0
+    
+    def cost_impact_velocity(
+        self,
+        ground_contact: jax.Array,
+        foot_velocity: jax.Array
+    ):
+        fz = foot_velocity[:, -1]
+        return self._np.linalg.norm(fz * ground_contact)

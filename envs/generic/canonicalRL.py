@@ -118,7 +118,7 @@ class CanonicalRL(BipedalBase):
 
         rng, key = self._split(rng)
         phase_dt = 2.0 * self._np.pi * self.dt * self._config.gait_freq
-        phase = 0.0
+        phase = self._uniform(key, minval=0.0, maxval=self._np.pi)
 
         additional_info = {
             "rng":           rng,
@@ -155,10 +155,10 @@ class CanonicalRL(BipedalBase):
         # Velocity
         if self.params.tracking == 'position':
             dt = time - info['last_time']
+            info['delta_act'] = self._np.zeros_like(info['act_history'][0])
+        else:
             jt_vdes = (des_pos - info['act_history'][0]) / dt
             info['delta_act'] = info['delta_act'] + dt / self.params.filter_tau * (jt_vdes - info['delta_act']) 
-        else:
-            info['deta_act'] = 0
         
         self.update_history(info['act_history'], action * self._config.action_scale)
         info['last_time'] = time

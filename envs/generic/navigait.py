@@ -36,7 +36,8 @@ class NaviGait(BipedalBase):
         gait_type='P2',
         backend='jnp',
         num_degree=7,
-        animate=False
+        animate=False,
+        angular_tracking=False
     ):
         # Initialize the parent (bipedal) class
         super().__init__(
@@ -66,6 +67,8 @@ class NaviGait(BipedalBase):
         # Set the configuration
         self.params = env_params
         self._set_model_vars()
+
+        self.angular_tracking = angular_tracking
 
     def _set_model_vars(self) -> None:
         
@@ -122,8 +125,7 @@ class NaviGait(BipedalBase):
             chosen_vdes = self._np.hstack((chosen_vdes, self._np.array([0.0])))
         else:
             chosen_vdes = self._np.array(self.params.initialization.vdes)
-        
-        
+            
         gaitlib = self.set_gaitlib(
             rng          = rng,
             vdes_gaitlib = chosen_vdes[:2]
@@ -148,8 +150,8 @@ class NaviGait(BipedalBase):
             qpos = des_qpos
             qvel = self._np.hstack([ff_state[geo.FREE3D_POS:], jt_state[ndof:]])
 
-
-        return rng, gaitlib, qpos, qvel
+        w_cmd = chosen_vdes[2]
+        return rng, gaitlib, w_cmd, qpos, qvel
 
     
     def set_gaitlib(
@@ -177,6 +179,7 @@ class NaviGait(BipedalBase):
         self,
         rng: jax.Array,
         gaitlib: GaitLibrary,
+        w_cmd: jax.Array,
         global_qpos: jax.Array,
         global_qvel: jax.Array,
         ctrl: jax.Array,
@@ -186,7 +189,6 @@ class NaviGait(BipedalBase):
         num_resets: int,
         njoint = None,
     ) -> mjx_env.State:        
-
         data = self._data_init_fn(
             time         = 0.0,
             qpos         = global_qpos,
@@ -195,7 +197,6 @@ class NaviGait(BipedalBase):
             xfrc_applied = self._np.zeros((self._mj_model.nbody, 6)),
         )
         state = super().reset(rng, data, torso_id, floor_id, ndof, num_resets, njoint = njoint)
-
         # Calculate offset transform
         relative_base_des = gaitlib.ff_evaluate(0)
         base2global = geo.solve_transform(
@@ -204,7 +205,6 @@ class NaviGait(BipedalBase):
             global_qpos[:geo.FREE3D_POS],
             reset_yaw=True
         )
-
         # Initialize history buffers.
         his_len = self.params.history_length
         gait_des = gaitlib(0)
@@ -236,7 +236,6 @@ class NaviGait(BipedalBase):
             min_idx=9,
             max_idx=10
         )
-
         additional_info = {
             "rng":                rng,
             'standing':           0.0,
@@ -248,7 +247,7 @@ class NaviGait(BipedalBase):
             'base2global':        base2global,
             'old_base2global':    base2global,
             'gaitlib':            gaitlib,
-            'vdes':               self._np.hstack((gaitlib.curr_vdes.copy(), self._np.zeros(1))),
+            'vdes':               self._np.hstack((gaitlib.curr_vdes.copy(), self._np.array(w_cmd))),
             'vdes_res':           self._np.zeros(3),
             'last_vdes_res':      self._np.zeros(3),
             'vel_target':         self._np.zeros(3),
@@ -292,13 +291,19 @@ class NaviGait(BipedalBase):
         gyro_history  = self.make_history(noisy_gyro, gyro_history_len)
         accel_history = self.make_history(noisy_accel, accel_history_len)
         
+        motor_targets = self._np.hstack([
+            global_hzd_qpos[geo.FREE3D_POS:],
+            global_hzd_qvel[geo.FREE3D_VEL:]
+        ])
+        motor_target_history = self.make_history(motor_targets, self.params.domain_randomization.action_delay.val[1] + 1)
         additional_info = {
-            'gyro_history'      : gyro_history,
-            'accel_history'     : accel_history,
-            'qpos_history'      : qpos_history,
-            'noisy_qpos_history': noisy_qpos_history,
-            'qvel_history'      : qvel_history,
-            'noisy_qvel_history': noisy_qvel_history,
+            'gyro_history'        : gyro_history,
+            'accel_history'       : accel_history,
+            'qpos_history'        : qpos_history,
+            'noisy_qpos_history'  : noisy_qpos_history,
+            'qvel_history'        : qvel_history,
+            'noisy_qvel_history'  : noisy_qvel_history,
+            'motor_target_history': motor_target_history,
         }
         additional_info['transform_init'] = self._np.copy(parent_state.info['base2global'])
         updated_info = parent_state.info | additional_info
@@ -351,6 +356,7 @@ class NaviGait(BipedalBase):
         info: dict[str | jax.Array],
         res_joints: jax.Array,
         res_vel: jax.Array,
+        recurrent_states: jax.Array,
         ndof: int,
     ) -> jax.Array:
         """Pre-processes the residual actions and re-evaluates the gait library
@@ -392,7 +398,7 @@ class NaviGait(BipedalBase):
         gaitlib = info['gaitlib'] 
 
         gaitlib = self._cond(
-            gaitlib.get_step_phase(time) < 0.7,
+            gaitlib.get_step_phase(time) < MIN_SWING_PHASE,
             set_new_gait,
             keep_gait,
             (gaitlib, info['vel_target'][:2], time)
@@ -423,9 +429,13 @@ class NaviGait(BipedalBase):
     
         info['act_history'] = self.update_history(
             info['act_history'],
-            self._np.hstack([res_joints, res_vel])
+            self._np.hstack([res_joints, res_vel, recurrent_states])
         )
 
+        info['motor_target_history'] = self.update_history(
+            info['motor_target_history'],
+            motor_targets
+        )
         return motor_targets, info
     
     def get_relative_qpos(
@@ -495,7 +505,7 @@ class NaviGait(BipedalBase):
             self._np,
             new_base_des[:geo.FREE3D_POS],
             qpos[:geo.FREE3D_POS],
-            cmd_yaw_offset=info['vdes'][2]
+            cmd_yaw_offset=info['vdes'][2] #if self.angular_tracking else None
         )
         info['old_base2global'] = info['base2global'].copy()
         info['base2global'] = switched * base2global + (1 - switched) * info['base2global']
@@ -562,20 +572,21 @@ class NaviGait(BipedalBase):
         ndof
     ) -> jax.Array:
         
-        info['rng'], key = self._split(info['rng'])
-        obs_delay = self.params.domain_randomization.obs_delay
-        rand_delays = self._np.round(self._uniform(
-            key,
-            shape=(3,),
-            minval=self._np.array([obs_delay.gyro[0], obs_delay.accel[0], obs_delay.qpos[0]]),
-            maxval=self._np.array([obs_delay.gyro[1], obs_delay.accel[1], obs_delay.qpos[1]])
-        )).astype(self._np.int32)
+        # info['rng'], key = self._split(info['rng'])
+        # obs_delay = self.params.domain_randomization.obs_delay
+        # rand_delays = self._np.round(self._uniform(
+        #     key,
+        #     shape=(3,),
+        #     minval=self._np.array([obs_delay.gyro[0], obs_delay.accel[0], obs_delay.qpos[0]]),
+        #     maxval=self._np.array([obs_delay.gyro[1], obs_delay.accel[1], obs_delay.qpos[1]])
+        # )).astype(self._np.int32)
 
-        gyro_delay, accel_delay, qpos_delay = self._np.where(
-            self.params.domain_randomization.obs_delay.enabled,
-            rand_delays,
-            self._np.ones(3).astype(self._np.int32)
-        )
+        # gyro_delay, accel_delay, qpos_delay = self._np.where(
+        #     self.params.domain_randomization.obs_delay.enabled,
+        #     rand_delays,
+        #     self._np.ones(3).astype(self._np.int32)
+        # )
+        gyro_delay, accel_delay, qpos_delay = info['obs_delay'], info['obs_delay'], info['obs_delay']
         
         his_len = self.params.history_length
         proprioception = self._np.hstack([
@@ -590,7 +601,7 @@ class NaviGait(BipedalBase):
         ])
 
         output_feedback = self._np.hstack([
-            info['act_history'].flatten()
+            info['act_history'].flatten() # includes recurrent states...
         ])
 
         command = info['vdes'][:2] # only needs xy for observation...
@@ -618,7 +629,8 @@ class NaviGait(BipedalBase):
         privileged_obs = self._np.hstack([
             obs,
             privileged_history,
-            disturbance
+            disturbance,
+            info['jt_offset']
         ])
 
         return {

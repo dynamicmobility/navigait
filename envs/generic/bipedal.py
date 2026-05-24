@@ -78,7 +78,7 @@ class BipedalBase(mjx_env.MjxEnv):
                 data = mjx_env.init(
                     self._mjx_model, qpos=qpos, qvel=qvel, ctrl=ctrl
                 ).replace(time=time, xfrc_applied=xfrc_applied)
-                data = mjx.forward(self._mjx_model, data)
+                # data = mjx.forward(self._mjx_model, data)
                 return data.replace(ctrl=ctrl)
 
             self._data_init_fn = mjx_data_init_fn
@@ -127,7 +127,7 @@ class BipedalBase(mjx_env.MjxEnv):
                 data.qvel = qvel
                 data.ctrl = ctrl
                 data.xfrc_applied = xfrc_applied
-                mj.mj_forward(self.mj_model, data)
+                # mj.mj_forward(self.mj_model, data)
                 data.ctrl = ctrl
 
                 return data
@@ -235,15 +235,16 @@ class BipedalBase(mjx_env.MjxEnv):
         rel_pert_vec = info['push_on'] * rel_pert_vec
         info['curr_pert'] = rel_pert_vec
         
+        
         rpy = geo.quat2euler(self._np, data.qpos[3:7])
         rot_mat = geo.rotz(self._np, rpy[2])
         global_pert = rot_mat @ rel_pert_vec
-        
+
         perturbation_vec = self._np.array([
             *global_pert, # force (x, y, z)
             0.0,   0.0,   0.0  # torque (x, y, z)    
         ])
-        
+
         new_xfrc_applied = self._set_val_fn(
             arr=self._np.copy(data.xfrc_applied),
             val=perturbation_vec,
@@ -542,6 +543,17 @@ class BipedalBase(mjx_env.MjxEnv):
             maxval=timeconst_multiplier_bounds[1]
         )[:, self._np.newaxis]
         actuator_dynprm = timeconst * self._mj_model.actuator_dynprm
+
+        # # FOOT COLLISION ANGLE
+        # geom_id = 6
+        # foot_angle_bounds = self.get_bounds(DR.params.foot_angle * curr_level)
+        # foot_angle_offset = self._uniform(
+        #     key,
+        #     minval=foot_angle_bounds[0],
+        #     maxval=foot_angle_bounds[1]
+        # )
+        # quat_offset = geo.euler2quat(np, np.array([0, 0, foot_angle_offset]))
+        # new_quat = geo.quat_mul(np, quat_offset, model.geom_quat[geom_id])
         
         return {
             'geom_friction'       : geom_friction,
