@@ -44,12 +44,6 @@ def main():
         swing_leg     = Leg.LEFT,
         gait_type     = 'P2'
     )
-    # cmd = gl.evaluate(0.0, gl.swing_leg)
-    # print(repr(gl.ff_evaluate(0.0)))
-    # print()
-    # print(repr(bruce.crank2pitch(np, cmd[:10])))
-    # print(repr(bruce.crank2pitch(np, cmd[10:])))
-    # quit()
     
     # Start up server for accepting remote state data
     server = ControlServer(
@@ -66,16 +60,33 @@ def main():
     PRINT_FREQ = 100
     state_msg: BruceEvent = server.handle_request()
     start_pos = np.array(state_msg.proprioception.qpos.data)[FREE3D_POS:].copy()
-    leg = Leg.LEFT
+    gl_start = gl.evaluate(0.0, gl.swing_leg)
+    spline_T = 0.3
+
+    spline_to_start = CubicSpline(
+        start_pos, np.zeros_like(start_pos),
+        np.concatenate((bruce.crank2pitch(np, gl_start[:10]), np.zeros(6))),
+        np.concatenate((bruce.crank2pitch(np, gl_start[10:]), np.zeros(6))),
+        T=spline_T
+    )
+
+    while state_msg.time < spline_T:
+        pos, vel, _ = spline_to_start.evaluate(state_msg.time)
+        output_msg = pack_control(
+            time     = state_msg.time, 
+            qpos_des = np.hstack([pos[:10], np.zeros(6)]),
+            qvel_des = np.hstack([vel[:10], np.zeros(6)]),
+        )
+        server.send_control(output_msg)
+        state_msg: BruceEvent = server.handle_request()
 
     while True:
-        time_start = time.perf_counter()
-
         # Evaluate the gait library
-        s = gl.get_phase(state_msg.time)
+        s = gl.get_phase(state_msg.time - spline_T)
         if s >= 1.0:
-            gl = gl.impact_reset(state_msg.time, cpu_cond)
-            s = gl.get_phase(state_msg.time)
+            gl = gl.impact_reset(state_msg.time - spline_T, cpu_cond)
+            s = gl.get_phase(state_msg.time - spline_T)
+
         cmd = gl.evaluate(s, gl.swing_leg)
 
         # Send commands to the robot
