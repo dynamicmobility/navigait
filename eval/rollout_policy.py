@@ -24,14 +24,14 @@ def main():
 
     # Create the environment
     env, env_cfg = create_environment(config, idealistic=True, animate=False)
-    env.params.initialization.vdes = [0.0, -0.05, 0.0]
+    env.params.initialization.vdes = [-0.15, -0.00, 0.0]
     env.params.initialization.strategy = 'manual'
     # env.params.start_stance = 'right'
     # env.params.noise_scale = 1.0
     # env.params.domain_randomization.obs_delay.enabled = True
     env.params.push.push_duration = 0.1
     env.params.push.nopush_duration = 5.1
-    # env.params.push.enabled = False
+    env.params.push.enabled = False
     # env.params.initialization.random_jt_calibration.enabled = False
     
     # Load the model    
@@ -43,7 +43,7 @@ def main():
     vx_lim = config['env_config']['command']['lin_vel_x']
     vy_lim = config['env_config']['command']['lin_vel_y']
     # Rollout the policy in the environment
-    T = 10.0
+    T = 2.0
     frames, reward_plotter, data_plotter, info_plotter = rollout(
         reset        = reset,
         step         = step, 

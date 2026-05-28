@@ -1,3 +1,6 @@
 [submodule "externals/bruce_trajopt"]
 	path = externals/bruce_trajopt
 	url = https://github.com/dynamicmobility/bruce_trajopt.git
+[submodule "externals/roboprotobuf"]
+	path = externals/roboprotobuf
+	url = git@github.com:dynamicmobility/roboprotobuf.git

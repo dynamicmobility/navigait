@@ -7,17 +7,18 @@ robot: "BRUCE"
 backend: "np"
 gaitlib_path: envs/bruce/gaits/BRUCE_GL_4bar_noarms_v1
 env_config:
-  ctrl_dt:        0.02
-  sim_dt:         0.004
-  jt_scale:       0.20
-  vel_scale:      0.20
-  history_length: 5
-  noise_scale:    1.0
-  terrain:        "flat"
-  filter_tau:     0.03
-  tracking:       position
-  ankle_offsets:  [-0.0, -0.0]
-  start_stance:   either
+  ctrl_dt:          0.02
+  sim_dt:           0.004
+  jt_scale:         0.20
+  vel_scale:        0.20
+  history_length:   5
+  noise_scale:      1.0
+  terrain:          "flat"
+  filter_tau:       0.03
+  tracking:         position
+  ankle_offsets:    [-0.0, -0.0]
+  start_stance:     either
+  recurrent_states: 0
   initialization:
     strategy: "random-with-zero"
     vdes: [0.0, 0.0, 0.0]
@@ -42,6 +43,9 @@ env_config:
       gyro:  [0, 1]
       accel: [0, 1]
       qpos:  [0, 1]
+    action_delay:
+      enabled: false
+      val:     [0, 1]
     params:
       floor_friction:   0.4
       dof_frictionloss: 0.1
@@ -68,6 +72,7 @@ env_config:
       global_xy_tracking:  0.00
       global_z_tracking:   0.00
       res_jt_rate:        -0.20
+      foot_impact:         0.00
     sigmas:
       gait_tracking:      0.13
       base_xyz_tracking:  0.001
@@ -111,7 +116,7 @@ learning_params:
     num_timesteps: 400000000
     num_updates_per_batch: 4
     reward_scaling: 1.0
-    unroll_length: 32ppo_params:
+    unroll_length: 32
     action_repeat: 1
     batch_size: 256
     clipping_epsilon: 0.2

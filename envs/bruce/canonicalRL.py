@@ -29,7 +29,7 @@ from mujoco_playground._src import mjx_env
 from mujoco_playground._src.collision import geoms_colliding
 
 from envs.generic.canonicalRL import CanonicalRL
-from envs.bruce import interface4bar as bruce
+from envs.bruce import interface_westwood as bruce
 # from envs.bruce import interfacedirect as bruce
 from utils import geometry as geo
 
@@ -47,7 +47,7 @@ class Bruce(CanonicalRL):
         animate=False
     ):
         super().__init__(
-            xml_path=bruce.PD_XML,
+            xml_path=bruce.OFFICIAL_XML,
             env_params=env_params,
             curriculum_epochs=curriculum_epochs,
             backend=backend
@@ -60,7 +60,6 @@ class Bruce(CanonicalRL):
             self.params.initialization.strategy = 'manual'
             self.params.initialization.add_random_yaw = False
             self.params.initialization.add_random_jt.enabled = False
-            self.params.command.enabled = False
 
         self._post_init()
         self.nq = geo.FREE3D_POS + bruce.NDOF
@@ -92,21 +91,24 @@ class Bruce(CanonicalRL):
             rng, jt_key = self._split(rng)
             ext_full_qpos = self.add_random_joint_state(
                 jt_key = jt_key, 
-                qpos   = bruce.ext_crank2ext_full(self._np, ext_crank_qpos, geo.FREE3D_POS),
+                qpos   = bruce.ext(self._np, bruce.crank2full, ext_crank_qpos, geo.FREE3D_POS),
                 minval = initialization.add_random_jt.minval,
                 maxval = initialization.add_random_jt.maxval
             )
-            ext_crank_qpos = bruce.ext_full_2ext_crank(self._np, ext_full_qpos, geo.FREE3D_POS)
+            ext_crank_qpos = bruce.ext(self._np, bruce.full2crank, ext_full_qpos, geo.FREE3D_POS)
 
         rng, z0_key = self._split(rng)
         z0 = self._uniform(z0_key, minval=initialization.z0[0], maxval=initialization.z0[1])
         ext_crank_qpos = self._set_val_fn(ext_crank_qpos, val=z0, min_idx=2, max_idx=3)
 
         ext_crank_qvel = self._np.zeros(geo.FREE3D_VEL + bruce.NDOF)
-        ctrl = self._np.zeros(self.mjx_model.nu)
+        ctrl = self._np.hstack([
+            bruce.crank2bear(self._np, ext_crank_qpos[geo.FREE3D_POS:]),
+            self._np.zeros(bruce.NDOF)
+        ])
         parent_state = super().reset(rng,
-            qpos     = bruce.ext_crank2ext_full(self._np, ext_crank_qpos, geo.FREE3D_POS),
-            qvel     = bruce.ext_crank2ext_full(self._np, ext_crank_qvel, geo.FREE3D_VEL),
+            qpos     = bruce.ext(self._np, bruce.crank2full, ext_crank_qpos, geo.FREE3D_POS),
+            qvel     = bruce.ext(self._np, bruce.crank2full, ext_crank_qvel, geo.FREE3D_VEL),
             cmd      = ctrl,
             torso_id = bruce.TORSO_ID,
             floor_id = bruce.GROUND_GEOM_ID,
@@ -129,12 +131,12 @@ class Bruce(CanonicalRL):
         action_history = self.make_history(ctrl[:bruce.NDOF], his_len)
 
         additional_info = {
-            'qpos_history':   qpos_history,
+            'qpos_history':         qpos_history,
             'noisy_qpos_history':   qpos_history.copy(),
-            'qvel_history':   qvel_history,
-            'gyro_history':   gyro_history,
-            'accel_history':  accel_history,
-            'action_history': action_history,
+            'qvel_history':         qvel_history,
+            'gyro_history':         gyro_history,
+            'accel_history':        accel_history,
+            'action_history':       action_history,
         }
         updated_info = parent_state.info | additional_info
 
@@ -167,6 +169,10 @@ class Bruce(CanonicalRL):
             action           = action,
             info             = state.info
         )
+        motor_targets = self._np.hstack([
+            bruce.crank2bear(self._np, motor_targets[:bruce.NDOF]),
+            bruce.crank2bear(self._np, motor_targets[bruce.NDOF:])
+        ])
 
         # Step the simulation
         data = self._step_fn(state.data, motor_targets, model=rand_model)
@@ -183,8 +189,8 @@ class Bruce(CanonicalRL):
         updated_info = self.update_internal_state(
             info            = updated_info,
             time            = data.time,
-            qpos            = bruce.ext_full_2ext_crank(self._np, data.qpos, geo.FREE3D_POS),
-            qvel            = bruce.ext_full_2ext_crank(self._np, data.qvel, geo.FREE3D_VEL),
+            qpos            = bruce.ext(self._np, bruce.full2crank, data.qpos, geo.FREE3D_POS),
+            qvel            = bruce.ext(self._np, bruce.full2crank, data.qvel, geo.FREE3D_VEL),
             action          = motor_targets[:bruce.NDOF],
             foot_pos        = bruce.get_foot_pos(self._np, self._mj_model, data),
             contact         = ground_contacts,

@@ -1,7 +1,5 @@
 from control.bezier import P1Bezier, Leg
 import numpy as np
-from enum import IntEnum
-from scipy.spatial import KDTree
 import jax
 from jax import numpy as jnp
 from dataclasses import dataclass, field
@@ -11,6 +9,12 @@ from yaml import safe_load
 from pathlib import Path
 
 MIN_SWING_PHASE = 0.7
+
+def cpu_cond(cond, true_fn, false_fn, operand):
+    if cond:
+        return true_fn(operand)
+    else:
+        return false_fn(operand)
 
 @jax.tree_util.register_pytree_node_class
 @dataclass(frozen=True)

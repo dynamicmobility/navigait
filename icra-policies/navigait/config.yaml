@@ -3,6 +3,7 @@ backend: np
 description: change push mag next
 env: NaviGait
 env_config:
+  recurrent_states: 0
   ankle_offsets:
   - -0.0
   - -0.0
@@ -36,6 +37,9 @@ env_config:
       qpos:
       - 0
       - 1
+    action_delay:
+      enabled: false
+      val:     [0, 1]
     params:
       body_com: 0.01
       dof_armature: 0.1
@@ -91,6 +95,7 @@ env_config:
       vel_residual_rate: 0.08
       vel_residual_size: 0.003
     weights:
+      foot_impact: 0.00
       alive: 0.0
       base_quat_tracking: 1.0
       base_vel_tracking: 0.0
