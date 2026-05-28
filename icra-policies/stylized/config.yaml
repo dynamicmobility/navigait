@@ -24,6 +24,11 @@ env_config:
     scale: 1.0
     scaling_iterations: 75.0
   domain_randomization:
+    action_delay:
+      enabled: false
+      val:
+      - 0
+      - 1
     enabled: true
     obs_delay:
       accel:
@@ -79,6 +84,7 @@ env_config:
     minor_lim: 5.0
     nopush_duration: 5.0
     push_duration: 0.6
+  recurrent_states: 0
   reward:
     sigmas:
       base_quat_tracking: 0.02
@@ -96,6 +102,7 @@ env_config:
       base_vel_tracking: 0.0
       base_xyz_tracking: 1.0
       foot_contact: 0.0
+      foot_impact: 0.0
       gait_tracking: 1.0
       global_xy_tracking: 0.0
       global_z_tracking: 0.0
@@ -111,7 +118,7 @@ env_config:
   tracking: position
   vel_scale: 0.2
 gaitlib_path: envs/bruce/gaits/BRUCE_GL_stylized_v6
-git_hash: 4b1f6c82a55cdca6581e39e82eb5b4e86a3e8265
+git_hash: 1a8674a9cfb0a3652d16e63685f13ce94eff3074
 learning_params:
   network_params:
     policy_hidden_layer_sizes:
@@ -139,6 +146,6 @@ learning_params:
     num_updates_per_batch: 4
     reward_scaling: 1.0
     unroll_length: 32
-name: stylized
+name: test
 robot: BRUCE
-save_dir: icra-policies
+save_dir: results/stylized/may28
