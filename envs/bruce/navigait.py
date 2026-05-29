@@ -197,6 +197,7 @@ class Bruce(NaviGait):
     def reset_ctrl(
         self,
         initial_vdes: np.ndarray,
+        w_des_init: np.ndarray,
         global_hzd_qpos: np.ndarray,
         gyro: np.ndarray,
         accel: np.ndarray,
@@ -224,6 +225,7 @@ class Bruce(NaviGait):
         parent_state = super().reset(
             rng          = rng, 
             gaitlib      = gaitlib,
+            w_cmd        = w_des_init,
             global_qpos  = bruce.ext(self._np, bruce.crank2full, global_hzd_qpos, geo.FREE3D_POS),
             global_qvel  = mj_qvel,
             ctrl         = initial_ctrl,
@@ -360,8 +362,9 @@ class Bruce(NaviGait):
     def get_ctrl(
         self,
         time: float,
-        ext_crank_pos: np.ndarray,
-        ext_crank_vel: np.ndarray,
+        orientation: np.ndarray,
+        crank_pos: np.ndarray,
+        crank_vel: np.ndarray,
         info: dict[str | np.ndarray],
         gyro: np.ndarray,
         accel: np.ndarray,
@@ -371,8 +374,8 @@ class Bruce(NaviGait):
         # Update the internal state of the environment        
         updated_info: dict = self.update_internal_state(
             time                 = time,
-            qpos                 = ext_crank_pos,
-            qvel                 = ext_crank_vel,
+            qpos                 = self._np.concat((self._np.ones(3), orientation, crank_pos)),
+            qvel                 = self._np.concat((self._np.ones(3), gyro, crank_vel)),
             info                 = info,
             res_joints           = info['act_history'][0, :bruce.NDOF],
             left_ground_contact  = False,
