@@ -23,6 +23,32 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+# --- pygame must be imported FIRST on macOS ----------------------------------
+# Several downstream deps (opencv-python in particular) ship their own bundled
+# copy of libSDL2-2.0.0.dylib. Whichever SDL2 dylib loads first wins the
+# Objective-C class registration race for SDLApplication / IOHIDManager. If
+# cv2's SDL2 wins, pygame's joystick subsystem opens but never receives HID
+# events (all axes stay at 0.0 forever). Importing pygame here -- before
+# numpy/jax/utils.geometry etc. transitively pull in cv2 -- ensures pygame's
+# SDL2 registers the SDL classes and owns HID polling.
+# Hints must be set before pygame loads SDL2.
+# Force the cross-platform HIDAPI backend instead of the IOKit one. SDL's
+# IOKit joystick driver on macOS regularly stalls (HID callbacks stop firing
+# and get_axis() returns the last cached sample forever); HIDAPI polls the
+# device directly and is robust to that. The PS4-specific hint enables SDL's
+# DualShock 4 protocol handler so axes/buttons map correctly.
+os.environ.setdefault("SDL_JOYSTICK_HIDAPI", "1")
+os.environ.setdefault("SDL_JOYSTICK_HIDAPI_PS4", "1")
+os.environ.setdefault("SDL_JOYSTICK_HIDAPI_PS4_RUMBLE", "0")
+os.environ.setdefault("SDL_JOYSTICK_THREAD", "1")
+os.environ.setdefault("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1")
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+try:
+    import pygame  # noqa: F401  (just to load its SDL2 first)
+except ImportError:
+    pygame = None
+# -----------------------------------------------------------------------------
+
 import numpy as np
 import mujoco
 import viser
@@ -42,6 +68,17 @@ VISER_PORT = 8080
 # Disturbance: default force (N) and how many physics steps it is applied for.
 DISTURBANCE_FORCE = 60.0
 DISTURBANCE_STEPS = 50
+
+# PS4 / generic gamepad axis mapping (pygame). Most PS4 pads under SDL2 use:
+#   axis 0: left stick X, axis 1: left stick Y (down = +1),
+#   axis 2: right stick X, axis 3: right stick Y.
+GAMEPAD_AXIS_VX = 1   # left stick Y -> forward velocity (inverted: up = +vx)
+GAMEPAD_AXIS_VY = 0   # left stick X -> lateral velocity (inverted: left = +vy)
+GAMEPAD_AXIS_YAW = 2  # right stick X -> yaw rate (inverted: left = +yaw)
+GAMEPAD_DEADZONE = 0.12
+# Set NAVIGAIT_GAMEPAD_DEBUG=1 to log live axis values (helps remap a pad whose
+# axes don't match the defaults above). Rate-limited to once per second.
+GAMEPAD_DEBUG = bool(int(os.environ.get("NAVIGAIT_GAMEPAD_DEBUG", "0")))
 
 # Number of free-joint DOFs in qpos (7) and qvel (6).
 NUM_FREE_POS = geo.FREE3D_POS  # 7
@@ -83,6 +120,25 @@ class NaviGaitViserSim:
         self.torso_id = bruce.TORSO_ID
         self._disturbance_force = np.zeros(3)
         self._disturbance_steps_left = 0
+
+        # Gamepad state -- populated lazily in run() if pygame + a joystick are
+        # available. Slider handles are kept so the gamepad can drive them.
+        # Polling runs in a dedicated daemon thread (see _gamepad_loop): on
+        # macOS, SDL2 joystick events are tied to whichever thread initialized
+        # the subsystem, and that thread must keep pumping events for the
+        # IOKit HID manager to deliver new samples. Running pygame inside
+        # mjviser's step_fn worked initially but silently stalled after any
+        # hiccup; a dedicated polling thread avoids that.
+        self._joystick = None
+        self._gamepad_stop = False
+        self._gamepad_lock = None
+        self._vx_slider = None
+        self._vy_slider = None
+        self._w_slider = None
+        # Slider ranges captured so we can scale axis values into them.
+        self._vx_range = (-0.2, 0.2)
+        self._vy_range = (-0.1, 0.1)
+        self._w_range = (-0.5, 0.5)
 
     # ------------------------------------------------------------------ state
     def set_initial_state(self):
@@ -138,6 +194,147 @@ class NaviGaitViserSim:
         data.ctrl[:10] = bruce.pitch2bear(np, qpos_des)
         data.ctrl[10:20] = bruce.pitch2bear(np, qvel_des)
 
+    # -------------------------------------------------------------- gamepad
+    def _start_gamepad_thread(self):
+        """Spawn a daemon thread that owns pygame and polls the joystick.
+
+        Pygame/SDL2 on macOS requires that whichever thread initialized the
+        joystick subsystem is also the thread that pumps events; otherwise
+        new samples eventually stop arriving. Keeping init + pump + read all
+        on one dedicated thread sidesteps that.
+        """
+        import threading
+        self._gamepad_lock = threading.Lock()
+        t = threading.Thread(target=self._gamepad_loop, name="gamepad", daemon=True)
+        t.start()
+
+    def _gamepad_loop(self):
+        # pygame was imported at module top (before cv2) so its SDL2 wins the
+        # class-registration race. SDL_JOYSTICK_THREAD=1 was set there too.
+        if pygame is None:
+            print("[gamepad] pygame not installed; GUI sliders only.")
+            return
+        try:
+            # Full pygame.init() so the event subsystem is alive: get_axis()
+            # reads cached state that event.pump() refreshes from SDL's
+            # joystick events.
+            pygame.init()
+            pygame.joystick.init()
+        except Exception as e:
+            print(f"[gamepad] pygame init failed ({e}); GUI sliders only.")
+            return
+        if pygame.joystick.get_count() == 0:
+            print("[gamepad] no joystick detected; GUI sliders only.")
+            return
+        js = pygame.joystick.Joystick(0)
+        js.init()
+        self._joystick = js
+        self._pygame = pygame
+        print(f"[gamepad] using '{js.get_name()}' "
+              f"({js.get_numaxes()} axes, {js.get_numbuttons()} buttons)")
+
+        import time as _time
+        dt = 1.0 / CTRL_HZ
+        debug_tick = 0
+        # Stall detection: if every axis stays bit-for-bit identical for this
+        # many seconds, assume HID polling died and re-init the joystick.
+        STALL_SECS = 2.0
+        last_raw = None
+        last_change_t = _time.monotonic()
+        while not self._gamepad_stop:
+            try:
+                pygame.event.pump()
+            except Exception:
+                pass
+
+            try:
+                num_axes = js.get_numaxes()
+                raw = tuple(js.get_axis(i) for i in range(num_axes))
+            except pygame.error as e:
+                # SDL invalidated the joystick handle (device idle-disconnect,
+                # HIDAPI hiccup, etc.). Try to re-acquire it.
+                print(f"[gamepad] joystick handle lost ({e}); reinitializing")
+                try:
+                    pygame.joystick.quit()
+                    pygame.joystick.init()
+                    if pygame.joystick.get_count() == 0:
+                        _time.sleep(0.5)
+                        continue
+                    js = pygame.joystick.Joystick(0)
+                    js.init()
+                    self._joystick = js
+                except Exception as e2:
+                    print(f"[gamepad] reinit failed: {e2}")
+                    _time.sleep(0.5)
+                continue
+
+            now = _time.monotonic()
+            if raw != last_raw:
+                last_raw = raw
+                last_change_t = now
+            elif now - last_change_t > STALL_SECS:
+                print("[gamepad] axes stalled; reinitializing joystick subsystem")
+                try:
+                    js.quit()
+                    pygame.joystick.quit()
+                    pygame.joystick.init()
+                    if pygame.joystick.get_count() == 0:
+                        print("[gamepad] reinit found no joystick; will retry")
+                        _time.sleep(0.5)
+                        continue
+                    js = pygame.joystick.Joystick(0)
+                    js.init()
+                    self._joystick = js
+                except Exception as e:
+                    print(f"[gamepad] reinit failed: {e}")
+                last_change_t = now
+
+            def axis(i):
+                if i >= num_axes:
+                    return 0.0
+                return self._deadzone(raw[i])
+
+            ax_vx = -axis(GAMEPAD_AXIS_VX)
+            ax_vy = -axis(GAMEPAD_AXIS_VY)
+            ax_w = -axis(GAMEPAD_AXIS_YAW)
+
+            if GAMEPAD_DEBUG and debug_tick % CTRL_HZ == 0:
+                print(f"[gamepad] axes={[round(v, 3) for v in raw]}")
+            debug_tick += 1
+
+            if ax_vx != 0.0 or ax_vy != 0.0 or ax_w != 0.0:
+                vx = self._scale(ax_vx, *self._vx_range)
+                vy = self._scale(ax_vy, *self._vy_range)
+                wz = self._scale(ax_w, *self._w_range)
+                with self._gamepad_lock:
+                    self.cmd_vel[0] = vx
+                    self.cmd_vel[1] = vy
+                    self.cmd_w[0] = wz
+                if self._vx_slider is not None:
+                    try:
+                        self._vx_slider.value = vx
+                        self._vy_slider.value = vy
+                        self._w_slider.value = wz
+                    except Exception:
+                        pass
+
+            _time.sleep(dt)
+
+    @staticmethod
+    def _deadzone(v, dz=GAMEPAD_DEADZONE):
+        if abs(v) < dz:
+            return 0.0
+        # Rescale so output starts at 0 just past the deadzone.
+        sign = 1.0 if v > 0 else -1.0
+        return sign * (abs(v) - dz) / (1.0 - dz)
+
+    @staticmethod
+    def _scale(axis, lo, hi):
+        # axis in [-1, 1] -> [lo, hi] with 0 mapped to (lo+hi)/2.
+        mid = 0.5 * (lo + hi)
+        half = 0.5 * (hi - lo)
+        return float(np.clip(mid + axis * half, lo, hi))
+
     # ----------------------------------------------------------- disturbance
     def trigger_disturbance(self, magnitude, angle):
         """Queue a horizontal disturbance force on the torso."""
@@ -190,6 +387,15 @@ class NaviGaitViserSim:
         w_slider = server.gui.add_slider(
             "Yaw rate (rad/s)", min=-0.5, max=0.5, step=0.05, initial_value=0.0,
         )
+        self._vx_slider = vx_slider
+        self._vy_slider = vy_slider
+        self._w_slider = w_slider
+        # Keep ranges in sync with the slider constructors above. (Looked up
+        # here rather than via slider attrs because viser's slider handle does
+        # not expose min/max in all versions.)
+        self._vx_range = (-0.2, 0.2)
+        self._vy_range = (-0.1, 0.1)
+        self._w_range = (-0.5, 0.5)
 
         @vx_slider.on_update
         def _(_) -> None:
@@ -235,6 +441,7 @@ class NaviGaitViserSim:
         server.gui.configure_theme(dark_mode=True)
         self._setup_command_gui(server)
         self._setup_disturbance_gui(server)
+        self._start_gamepad_thread()
 
         print(f"NaviGait viewer ready. Open http://localhost:{VISER_PORT}")
         Viewer(
