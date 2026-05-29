@@ -362,6 +362,8 @@ class Bruce(NaviGait):
     def get_ctrl(
         self,
         time: float,
+        cmd_vel: np.ndarray,
+        cmd_w: np.ndarray,
         orientation: np.ndarray,
         crank_pos: np.ndarray,
         crank_vel: np.ndarray,
@@ -371,6 +373,7 @@ class Bruce(NaviGait):
     ) -> jax.Array:
         """Returns the control signal for the environment."""
         
+        info['vdes'] = np.hstack((cmd_vel, cmd_w))
         # Update the internal state of the environment        
         updated_info: dict = self.update_internal_state(
             time                 = time,

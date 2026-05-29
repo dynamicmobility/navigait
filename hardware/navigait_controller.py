@@ -49,7 +49,7 @@ def main():
     server.start_server()
     i = 0
     loop_accuracy_start = time.perf_counter()
-    PRINT_FREQ = 100
+    PRINT_FREQ = 10
     state_msg: BruceEvent = server.handle_request()
     start_pos = np.array(state_msg.proprioception.qpos.data).copy()
     inference_fn = load_policy(config)
@@ -66,10 +66,16 @@ def main():
 
     while True:
         # Evaluate NaviGait
+        i += 1
         crank_pos = bruce.pitch2crank(np, state_msg.proprioception.qpos.data[geo.FREE3D_POS:])
         crank_vel = bruce.pitch2crank(np, state_msg.proprioception.qpos.data[geo.FREE3D_VEL:])
+        cmd_vel = np.array((0.17 * np.sin(0.3 * state_msg.time), 0.0))
+        cmd_w = np.zeros(1)
+
         cmd, info = ng.get_ctrl(
             time=state_msg.time,
+            cmd_vel=cmd_vel,
+            cmd_w=cmd_w,
             orientation=state_msg.proprioception.qpos.data[3:7],
             crank_pos=crank_pos,
             crank_vel=crank_vel,
@@ -88,7 +94,8 @@ def main():
 
         if i % PRINT_FREQ == 0:
             many_loops_time = time.perf_counter() - loop_accuracy_start
-            print(f'LOOP ACCURACY = {many_loops_time - (1 / CTRL_RATE * PRINT_FREQ)} s')
+            # print(f'LOOP ACCURACY = {many_loops_time - (1 / CTRL_RATE * PRINT_FREQ)} s')
+            print(cmd_vel)
             loop_accuracy_start = time.perf_counter()
         
         # Recieve messages back

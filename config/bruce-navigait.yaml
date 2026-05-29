@@ -1,5 +1,5 @@
-name: parallel4096
-save_dir: icra2026-final/navigait/learning
+name: robustness
+save_dir: results/navigait/may28/
 description: "change push mag next"
 algorithm: "ppo"
 env: "NaviGait"
@@ -9,7 +9,7 @@ gaitlib_path: envs/bruce/gaits/BRUCE_GL_4bar_noarms_v1
 env_config:
   ctrl_dt:          0.02
   sim_dt:           0.004
-  jt_scale:         0.20
+  jt_scale:         0.30
   vel_scale:        0.20
   history_length:   5
   noise_scale:      1.0
@@ -39,7 +39,7 @@ env_config:
   domain_randomization:
     enabled: true
     obs_delay:
-      enabled: true
+      enabled: false
       gyro:  [0, 1]
       accel: [0, 1]
       qpos:  [0, 1]
@@ -86,19 +86,19 @@ env_config:
   termination:
     enabled: true
   command:
-    enabled:       false
+    enabled:       true
     lin_vel_x:     [-0.2, 0.2]
     lin_vel_y:     [-0.1, 0.1]
     ang_vel_z:     [0.0, 0.0]
     vdes_duration: 7.0
   push:
     enabled:         true
-    major_lim:       5.0
-    minor_lim:       5.0
-    annulus_width:   0.1
-    nopush_duration: 9.0
-    push_duration:   0.6
-    max_vdes:        [0.08, 0.04, 0.01]
+    major_lim:       20.0
+    minor_lim:       8.0
+    annulus_width:   0.2
+    nopush_duration: 4.0
+    push_duration:   0.2
+    max_vdes:        [0.16, 0.08, 0.01]
 learning_params:
   ppo_params:
     action_repeat: 1
@@ -134,5 +134,5 @@ learning_params:
     reward_scaling: 1.0
     unroll_length: 32
   network_params:
-    policy_hidden_layer_sizes: [256, 128, 64]
-    value_hidden_layer_sizes:  [256, 128, 64]
+    policy_hidden_layer_sizes: [256, 256, 128]
+    value_hidden_layer_sizes:  [256, 256, 128]
