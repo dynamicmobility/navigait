@@ -86,6 +86,44 @@ velocity targets.
 + mjviser sim that calls `get_ctrl` directly — no protobuf. See
 `eval/HANDOFF_run_navigait_viser.md`.
 
+### Gamepad input (PS4 / generic SDL2 pad)
+
+The viewer optionally accepts a gamepad via pygame. Left stick → `cmd_vel`
+(forward / lateral), right stick X → yaw rate; values are deadzoned and scaled
+into the existing slider ranges, and the GUI sliders mirror the stick. If
+pygame is missing or no pad is connected, the GUI alone still works.
+
+Two macOS-specific quirks the script papers over (host dev box is a MacBook Pro;
+Linux desktop is used occasionally):
+
+- **SDL2 dylib load order.** `cv2` (pulled in transitively via `utils.plotting`)
+  bundles its own `libSDL2-2.0.0.dylib`. If it loads before pygame, pygame's
+  joystick subsystem opens but never receives HID events (all axes read 0
+  forever). `pygame` is imported at the top of the script, *before*
+  numpy/jax/`utils.geometry`, so pygame's SDL2 wins the Objective-C class
+  registration race. Don't reorder those imports.
+- **`SDL_VIDEODRIVER=dummy`.** Set before `import pygame`. The gamepad runs in
+  a daemon thread that calls `pygame.event.pump()`; with a real video driver,
+  pump enters Cocoa AppKit from a non-main thread and macOS aborts the process
+  with `nextEventMatchingMask should only be called from the Main Thread`.
+
+On Linux these env hints are harmless no-ops, so the same script runs
+unmodified on the desktop.
+
+**Wired vs Bluetooth on macOS.** Wired (USB-C) is the reliable path: low
+latency, no idle suspend, well-tested HID report 0x01. The DS4 over Bluetooth
+hits two macOS bugs — aggressive idle disconnect (SDL's joystick handle goes
+stale) and flaky BT report (0x11 extended) handling in SDL's HIDAPI driver —
+which manifest as axes that freeze at their last value and eventually
+`pygame.error: Joystick not initialized`. If you must use BT, expect to
+restart the script periodically. Earlier revisions of the script had stall
+detection + handle re-acquire logic to paper over this; it was removed once
+wired was confirmed to work. Re-add from git history if BT becomes the only
+option.
+
+Set `NAVIGAIT_GAMEPAD_DEBUG=1` to log live raw axis values once per second —
+useful when remapping a non-PS4 pad (edit `GAMEPAD_AXIS_VX/VY/YAW`).
+
 ## Conventions / gotchas
 
 - Run scripts as modules from the repo root (`python -m eval.x ...`) so `envs`/`learning`
