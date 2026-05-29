@@ -43,8 +43,14 @@ import utils.geometry as geo
 
 CTRL_HZ = 50
 VISER_PORT = 8080
-DISTURBANCE_FORCE = 60.0
-DISTURBANCE_STEPS = 50
+DISTURBANCE_FORCE = 10.0
+DISTURBANCE_DURATION_S = 0.1
+# Disturbance arrow: drawn from the torso base along the applied force. Length
+# scales with force magnitude (meters per Newton).
+DISTURBANCE_ARROW_COLOR = (255, 70, 70)
+DISTURBANCE_ARROW_M_PER_N = 0.02
+MAX_DISTURBANCE = 40.0
+DISTURBANCE_INCREMENT = 1.0
 
 # Slider ranges, shared by GUI and gamepad scaling.
 VX_RANGE = (-0.2, 0.2)
@@ -84,6 +90,9 @@ class NaviGaitViserSim:
         self.torso_id = bruce.TORSO_ID
         self._disturbance_force = np.zeros(3)
         self._disturbance_steps_left = 0
+
+        self._server = None
+        self._arrow = None
 
         self._vx_slider = None
         self._vy_slider = None
@@ -177,7 +186,7 @@ class NaviGaitViserSim:
     # --- disturbance -----------------------------------------------------
     def trigger_disturbance(self, magnitude, angle):
         self._disturbance_force = magnitude * np.array([np.cos(angle), np.sin(angle), 0.0])
-        self._disturbance_steps_left = DISTURBANCE_STEPS
+        self._disturbance_steps_left = int(round(DISTURBANCE_DURATION_S / self.model.opt.timestep))
 
     def _apply_disturbance(self, data):
         if self._disturbance_steps_left > 0:
@@ -186,12 +195,39 @@ class NaviGaitViserSim:
         else:
             data.xfrc_applied[self.torso_id, :3] = 0.0
 
+    def _update_disturbance_arrow(self, data):
+        """Show/refresh a force arrow rooted at the torso base while a
+        disturbance is active; hide it otherwise."""
+        if self._server is None:
+            return
+        mag = float(np.linalg.norm(self._disturbance_force))
+        if self._disturbance_steps_left > 0 and mag > 1e-6:
+            start = data.xpos[self.torso_id].copy()
+            end = start + self._disturbance_force * DISTURBANCE_ARROW_M_PER_N
+            # Parent under "/fixed_bodies": mjviser shifts that frame by its
+            # scene_offset (= -tracked_body_pos when camera tracking is on) so
+            # the centered robot stays at the origin. Adding the arrow there in
+            # world coords keeps it pinned to the torso instead of drifting off
+            # by the tracking offset. add_arrows with the same name replaces the
+            # node in place, so this tracks the moving base + current force.
+            self._arrow = self._server.scene.add_arrows(
+                "/fixed_bodies/disturbance",
+                points=np.array([[start, end]]),
+                colors=DISTURBANCE_ARROW_COLOR,
+                shaft_radius=0.012,
+                head_radius=0.03,
+                head_length=0.05,
+            )
+        elif self._arrow is not None:
+            self._arrow.visible = False
+
     # --- mjviser callbacks ----------------------------------------------
     def make_step_fn(self):
         def step_fn(model, data):
             self.data = data
             if self._step_count % self.steps_per_frame == 0:
                 self._exchange(data)
+                self._update_disturbance_arrow(data)
             self._apply_disturbance(data)
             mujoco.mj_step(model, data)
             self._step_count += 1
@@ -231,7 +267,7 @@ class NaviGaitViserSim:
 
     def _setup_disturbance_gui(self, server):
         mag_slider = server.gui.add_slider(
-            "Disturbance force (N)", min=0.0, max=200.0, step=5.0, initial_value=DISTURBANCE_FORCE,
+            "Disturbance force (N)", min=0.0, max=MAX_DISTURBANCE, step=DISTURBANCE_INCREMENT, initial_value=DISTURBANCE_FORCE,
         )
         dir_slider = server.gui.add_slider(
             "Disturbance direction (deg)", min=0.0, max=360.0, step=15.0, initial_value=0.0,
@@ -252,6 +288,7 @@ class NaviGaitViserSim:
         self.reset_controller()
 
         server = viser.ViserServer(port=VISER_PORT)
+        self._server = server
         server.gui.configure_theme(dark_mode=True)
         self._setup_command_gui(server)
         self._setup_disturbance_gui(server)
