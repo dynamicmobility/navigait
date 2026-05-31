@@ -332,11 +332,13 @@ class NaviGaitViserSim:
         def _(_): self.cmd_w[0] = self._w_slider.value
 
     def _setup_follow_cam_gui(self, server):
-        with server.gui.add_folder("Third-person camera"):
-            follow_cb = server.gui.add_checkbox(
-                "Follow robot (behind)", initial_value=self._follow_cam_enabled,
-                hint="Keep the camera behind the robot's heading. Suppresses manual orbiting while on.",
-            )
+        with server.gui.add_folder("Camera"):
+            # Two modes, toggled by one button:
+            #   Follow - third-person camera locked behind the robot's heading
+            #            (forced each render frame, so manual orbiting is off).
+            #   Free   - default viser camera; we stop driving it so the user can
+            #            orbit/pan/zoom freely.
+            mode_btn = server.gui.add_button("Mode: Follow")
             dist_slider = server.gui.add_slider(
                 "Distance (m)", min=0.5, max=6.0, step=0.1, initial_value=self._follow_distance,
             )
@@ -348,8 +350,21 @@ class NaviGaitViserSim:
                 hint="Lower = more lag (camera trails the robot). 1.0 = rigid.",
             )
 
-            @follow_cb.on_update
-            def _(_): self._follow_cam_enabled = follow_cb.value
+            def _apply_mode():
+                follow = self._follow_cam_enabled
+                mode_btn.label = "Mode: Follow" if follow else "Mode: Free"
+                dist_slider.disabled = not follow
+                height_slider.disabled = not follow
+                lag_slider.disabled = not follow
+
+            @mode_btn.on_click
+            def _(_):
+                self._follow_cam_enabled = not self._follow_cam_enabled
+                if self._follow_cam_enabled:
+                    # Re-entering follow: snap to the robot, then ease as usual.
+                    self._cam_position = None
+                    self._cam_look_at = None
+                _apply_mode()
 
             @dist_slider.on_update
             def _(_): self._follow_distance = dist_slider.value
@@ -359,6 +374,8 @@ class NaviGaitViserSim:
 
             @lag_slider.on_update
             def _(_): self._follow_smoothing = lag_slider.value
+
+            _apply_mode()
 
     def _setup_disturbance_gui(self, server):
         mag_slider = server.gui.add_slider(
