@@ -52,10 +52,23 @@ DISTURBANCE_ARROW_M_PER_N = 0.02
 MAX_DISTURBANCE = 40.0
 DISTURBANCE_INCREMENT = 1.0
 
+# Third-person follow camera. Positioned behind the robot's heading and
+# re-aimed every render frame so the view chases the torso as it walks/turns.
+# Distances are relative to the look-at point (raised above the torso base for
+# nicer framing). Enabling this forces the camera each frame, so manual orbiting
+# is suppressed while it is on.
+FOLLOW_CAM_DISTANCE = 1.5      # meters behind the torso (horizontal)
+FOLLOW_CAM_HEIGHT = 0.8        # meters above the look-at point
+FOLLOW_CAM_LOOK_HEIGHT = 0.3   # raise look-at above the torso base
+# Per-frame smoothing fraction toward the target pose (exponential low-pass).
+# 1.0 = rigid/instant, lower = more lag. ~0.12 gives a gentle trailing feel at
+# the ~60 Hz render rate.
+FOLLOW_CAM_SMOOTHING = 0.02
+
 # Slider ranges, shared by GUI and gamepad scaling.
-VX_RANGE = (-0.2, 0.2)
-VY_RANGE = (-0.1, 0.1)
-W_RANGE = (-0.5, 0.5)
+VX_RANGE = (-0.17, 0.17)
+VY_RANGE = (-0.08, 0.08)
+W_RANGE = (-0.3, 0.3)
 
 # PS4 axis mapping (SDL2): 0=LX, 1=LY (down=+1), 2=RX, 3=RY.
 GAMEPAD_AXIS_VX = 1   # LY, inverted -> forward
@@ -92,7 +105,16 @@ class NaviGaitViserSim:
         self._disturbance_steps_left = 0
 
         self._server = None
+        self._viewer = None
         self._arrow = None
+
+        self._follow_cam_enabled = True
+        self._follow_distance = FOLLOW_CAM_DISTANCE
+        self._follow_height = FOLLOW_CAM_HEIGHT
+        self._follow_smoothing = FOLLOW_CAM_SMOOTHING
+        # Smoothed camera state; None until the first frame snaps to target.
+        self._cam_position = None
+        self._cam_look_at = None
 
         self._vx_slider = None
         self._vy_slider = None
@@ -168,8 +190,8 @@ class NaviGaitViserSim:
             tick += 1
 
             ax_vx = -_deadzone(raw[GAMEPAD_AXIS_VX])
-            ax_vy = -_deadzone(raw[GAMEPAD_AXIS_VY])
-            ax_w = -_deadzone(raw[GAMEPAD_AXIS_YAW])
+            ax_vy = _deadzone(raw[GAMEPAD_AXIS_VY])
+            ax_w = _deadzone(raw[GAMEPAD_AXIS_YAW])
 
             if ax_vx or ax_vy or ax_w:
                 vx = _scale(ax_vx, *VX_RANGE)
@@ -221,7 +243,49 @@ class NaviGaitViserSim:
         elif self._arrow is not None:
             self._arrow.visible = False
 
+    # --- follow camera ---------------------------------------------------
+    def _update_follow_camera(self):
+        """Aim every client camera from behind the robot's heading.
+
+        mjviser's "Track camera" recenters the scene by shifting all geometry by
+        ``scene._scene_offset`` (= -tracked_body_pos), so the displayed torso is
+        at ``data.xpos[torso] + scene_offset``. We anchor to that displayed
+        position (works whether or not tracking is on) and place the camera
+        ``_follow_distance`` behind the torso's yaw heading and ``_follow_height``
+        above the look-at point. Forward is the robot's +x (the cmd_vel forward
+        axis); yaw uses the same convention as geo.extract_yaw."""
+        if not self._follow_cam_enabled or self._server is None or self._viewer is None:
+            return
+        scene_offset = self._viewer.scene._scene_offset
+        torso = self.data.xpos[self.torso_id] + scene_offset
+        w, x, y, z = self.data.qpos[3:7]
+        yaw = np.arctan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+        forward = np.array([np.cos(yaw), np.sin(yaw), 0.0])
+
+        look_at_target = torso + np.array([0.0, 0.0, FOLLOW_CAM_LOOK_HEIGHT])
+        position_target = look_at_target - forward * self._follow_distance + np.array([0.0, 0.0, self._follow_height])
+
+        # Exponential low-pass so the camera trails the robot instead of snapping
+        # to it. Smoothing both vectors lags position and heading together.
+        a = self._follow_smoothing
+        if self._cam_position is None:
+            self._cam_position = position_target
+            self._cam_look_at = look_at_target
+        else:
+            self._cam_position += a * (position_target - self._cam_position)
+            self._cam_look_at += a * (look_at_target - self._cam_look_at)
+
+        for client in self._server.get_clients().values():
+            client.camera.position = self._cam_position
+            client.camera.look_at = self._cam_look_at
+
     # --- mjviser callbacks ----------------------------------------------
+    def make_render_fn(self):
+        def render_fn(scene):
+            scene.update_from_mjdata(self.data)
+            self._update_follow_camera()
+        return render_fn
+
     def make_step_fn(self):
         def step_fn(model, data):
             self.data = data
@@ -240,6 +304,8 @@ class NaviGaitViserSim:
             self.data = data
             self.set_initial_state()
             self._step_count = 0
+            self._cam_position = None  # snap follow camera to the reset pose
+            self._cam_look_at = None
             mujoco.mj_forward(model, data)
             self.reset_controller()
         return reset_fn
@@ -264,6 +330,35 @@ class NaviGaitViserSim:
 
         @self._w_slider.on_update
         def _(_): self.cmd_w[0] = self._w_slider.value
+
+    def _setup_follow_cam_gui(self, server):
+        with server.gui.add_folder("Third-person camera"):
+            follow_cb = server.gui.add_checkbox(
+                "Follow robot (behind)", initial_value=self._follow_cam_enabled,
+                hint="Keep the camera behind the robot's heading. Suppresses manual orbiting while on.",
+            )
+            dist_slider = server.gui.add_slider(
+                "Distance (m)", min=0.5, max=6.0, step=0.1, initial_value=self._follow_distance,
+            )
+            height_slider = server.gui.add_slider(
+                "Height (m)", min=0.0, max=4.0, step=0.1, initial_value=self._follow_height,
+            )
+            lag_slider = server.gui.add_slider(
+                "Responsiveness", min=0.02, max=1.0, step=0.02, initial_value=self._follow_smoothing,
+                hint="Lower = more lag (camera trails the robot). 1.0 = rigid.",
+            )
+
+            @follow_cb.on_update
+            def _(_): self._follow_cam_enabled = follow_cb.value
+
+            @dist_slider.on_update
+            def _(_): self._follow_distance = dist_slider.value
+
+            @height_slider.on_update
+            def _(_): self._follow_height = height_slider.value
+
+            @lag_slider.on_update
+            def _(_): self._follow_smoothing = lag_slider.value
 
     def _setup_disturbance_gui(self, server):
         mag_slider = server.gui.add_slider(
@@ -291,17 +386,20 @@ class NaviGaitViserSim:
         self._server = server
         server.gui.configure_theme(dark_mode=True)
         self._setup_command_gui(server)
+        self._setup_follow_cam_gui(server)
         self._setup_disturbance_gui(server)
         self._start_gamepad_thread()
 
         print(f"NaviGait viewer ready. Open http://localhost:{VISER_PORT}")
-        Viewer(
+        self._viewer = Viewer(
             self.model,
             self.data,
             step_fn=self.make_step_fn(),
+            render_fn=self.make_render_fn(),
             reset_fn=self.make_reset_fn(),
             server=server,
-        ).run()
+        )
+        self._viewer.run()
 
 
 def _deadzone(v, dz=GAMEPAD_DEADZONE):
