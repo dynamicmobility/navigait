@@ -57,8 +57,8 @@ DISTURBANCE_INCREMENT = 1.0
 # Distances are relative to the look-at point (raised above the torso base for
 # nicer framing). Enabling this forces the camera each frame, so manual orbiting
 # is suppressed while it is on.
-FOLLOW_CAM_DISTANCE = 1.5      # meters behind the torso (horizontal)
-FOLLOW_CAM_HEIGHT = 0.8        # meters above the look-at point
+FOLLOW_CAM_DISTANCE = 1.2      # meters behind the torso (horizontal)
+FOLLOW_CAM_HEIGHT = 0.3        # meters above the look-at point
 FOLLOW_CAM_LOOK_HEIGHT = 0.3   # raise look-at above the torso base
 # Per-frame smoothing fraction toward the target pose (exponential low-pass).
 # 1.0 = rigid/instant, lower = more lag. ~0.12 gives a gentle trailing feel at
